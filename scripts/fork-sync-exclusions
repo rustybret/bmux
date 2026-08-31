@@ -1,0 +1,8 @@
+# Standing conflict classes for bmux fork sync
+# Format: <action>: <glob>
+#
+# keep-deleted: files removed in this fork that upstream might re-introduce
+# take-theirs: regenerable files where upstream's version is always preferred
+
+# Upstream CLA Assistant workflow (requires workflow PAT scope not held by automated sync bot)
+keep-deleted: .github/workflows/cla.yml

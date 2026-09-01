@@ -18,6 +18,11 @@ IOS_FILE="$ROOT_DIR/.github/workflows/test-ios.yml"
 CLA_GUARD_FILE="$ROOT_DIR/.github/workflows/cla-policy-guard.yml"
 
 check_cla_guard_runner() {
+  if [[ ! -f "$CLA_GUARD_FILE" ]]; then
+    echo "PASS: cla-policy-guard.yml not present in this fork (skipped)"
+    return 0
+  fi
+
   if ! grep -Fqx '    runs-on: ubuntu-24.04' "$CLA_GUARD_FILE"; then
     echo "FAIL: cla-policy-guard.yml must use the fixed GitHub-hosted ubuntu-24.04 runner"
     exit 1

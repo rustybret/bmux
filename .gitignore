@@ -28,6 +28,8 @@ GhosttyKit.xcframework.bak-*/
 cmux-*.zip
 cmux-macos.dmg
 appcast.xml
+dist-arcus/
+dist/
 
 # Python
 __pycache__/

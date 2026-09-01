@@ -7,9 +7,9 @@ source "$SCRIPT_DIR/lib/mobile-attach.sh"
 # shellcheck source=scripts/lib/dev-secrets.sh
 source "$SCRIPT_DIR/lib/dev-secrets.sh"
 
-APP_NAME="cmux DEV"
+APP_NAME="bmux DEV"
 BUNDLE_ID="com.cmuxterm.app.debug"
-BASE_APP_NAME="cmux DEV"
+BASE_APP_NAME="bmux DEV"
 DERIVED_DATA=""
 NAME_SET=0
 BUNDLE_SET=0
@@ -352,7 +352,7 @@ reload_cleanup_tag_state_with_lock() {
       close($fh);
       exit 1;
     }
-    my $cli_suffix = "/cmux DEV ${slug}.app/Contents/Resources/bin/cmux";
+    my $cli_suffix = "/bmux DEV ${slug}.app/Contents/Resources/bin/bmux";
     my $pointer_ok = length($publish_cli_path)
       ? write_discovery_file($pointer_path, $publish_cli_path)
       : clear_matching_discovery_file($pointer_path, $cli_suffix, 1);
@@ -484,8 +484,8 @@ cleanup_stale_cli_pointer_target() {
   [[ -n "$cli_path" ]] || return 0
   local bundle_path=""
   case "$cli_path" in
-    */Contents/Resources/bin/cmux)
-      bundle_path="${cli_path%/Contents/Resources/bin/cmux}"
+    */Contents/Resources/bin/bmux)
+      bundle_path="${cli_path%/Contents/Resources/bin/bmux}"
       ;;
     *)
       return 0
@@ -493,8 +493,8 @@ cleanup_stale_cli_pointer_target() {
   esac
   local app_name="${bundle_path##*/}"
   app_name="${app_name%.app}"
-  [[ "$app_name" == "cmux DEV "* ]] || return 0
-  local slug="${app_name#cmux DEV }"
+  [[ "$app_name" == "bmux DEV "* ]] || return 0
+  local slug="${app_name#bmux DEV }"
   [[ "$slug" =~ ^[A-Za-z0-9_-]+$ ]] || return 0
   local socket_path=""
   if [[ -x /usr/libexec/PlistBuddy && -f "$bundle_path/Contents/Info.plist" ]]; then
@@ -613,8 +613,8 @@ bundle_socket_path() {
 
   local app_name="\${bundle_path##*/}"
   app_name="\${app_name%.app}"
-  if [[ "\$app_name" == "cmux DEV "* ]]; then
-    local tag="\${app_name#cmux DEV }"
+  if [[ "\$app_name" == "bmux DEV "* ]]; then
+    local tag="\${app_name#bmux DEV }"
     [[ "\$tag" =~ ^[A-Za-z0-9_-]+\$ ]] || return 1
     printf '/tmp/cmux-debug-%s.sock\\n' "\$tag"
     return 0
@@ -642,7 +642,7 @@ if [[ -n "\$SOCKET_ARG" ]]; then
     TAG="\${SOCKET_NAME#cmux-debug-}"
     TAG="\${TAG%.sock}"
     if [[ "\$TAG" =~ ^[A-Za-z0-9_-]+$ ]]; then
-      TAG_CLI="\$HOME/Library/Developer/Xcode/DerivedData/cmux-\$TAG/Build/Products/Debug/cmux DEV \$TAG.app/Contents/Resources/bin/cmux"
+      TAG_CLI="\$HOME/Library/Developer/Xcode/DerivedData/cmux-\$TAG/Build/Products/Debug/bmux DEV \$TAG.app/Contents/Resources/bin/bmux"
       if live_cli_bundle "\$TAG_CLI" >/dev/null; then
         if [[ "\$HAS_EXPLICIT_SOCKET" == "0" ]] || socket_is_live "\$SOCKET_ARG"; then
           exec "\$TAG_CLI" "\$@"
@@ -1076,14 +1076,14 @@ print_tag_cleanup_reminder() {
     done
     echo "Cleanup stale tags only:"
     for tag in "${stale_tags[@]}"; do
-      echo "  pkill -f \"cmux DEV ${tag}.app/Contents/MacOS/cmux DEV\""
+      echo "  pkill -f \"bmux DEV ${tag}.app/Contents/MacOS/bmux DEV\""
       echo "  rm -rf \"$(tagged_derived_data_path "$tag")\" \"/tmp/cmux-${tag}\" \"/tmp/cmux-debug-${tag}.sock\""
       echo "  rm -f \"/tmp/cmux-debug-${tag}.log\""
       echo "  rm -f \"$HOME/Library/Application Support/cmux/cmuxd-dev-${tag}.sock\""
     done
   fi
   echo "After you verify current tag, cleanup command:"
-  echo "  pkill -f \"cmux DEV ${current_slug}.app/Contents/MacOS/cmux DEV\""
+  echo "  pkill -f \"bmux DEV ${current_slug}.app/Contents/MacOS/bmux DEV\""
   echo "  rm -rf \"$(tagged_derived_data_path "$current_slug")\" \"/tmp/cmux-${current_slug}\" \"/tmp/cmux-debug-${current_slug}.sock\""
   echo "  rm -f \"/tmp/cmux-debug-${current_slug}.log\""
   echo "  rm -f \"$HOME/Library/Application Support/cmux/cmuxd-dev-${current_slug}.sock\""
@@ -1211,7 +1211,7 @@ if [[ -n "$TAG" ]]; then
   TAG_ID="$(sanitize_bundle "$TAG")"
   TAG_SLUG="$(sanitize_path "$TAG")"
   if [[ "$NAME_SET" -eq 0 ]]; then
-    APP_NAME="cmux DEV ${TAG_SLUG}"
+    APP_NAME="bmux DEV ${TAG_SLUG}"
   fi
   if [[ "$BUNDLE_SET" -eq 0 ]]; then
     BUNDLE_ID="com.cmuxterm.app.debug.${TAG_ID}"
@@ -1658,7 +1658,7 @@ if [[ -n "$TAG" && "$APP_NAME" != "$SEARCH_APP_NAME" ]]; then
       set_plist_env "$INFO_PLIST" CMUX_SOCKET_MODE "allowAll"
       set_plist_env "$INFO_PLIST" CMUX_REMOTE_DAEMON_ALLOW_LOCAL_BUILD "1"
       set_plist_env "$INFO_PLIST" CMUXTERM_REPO_ROOT "$PWD"
-      set_plist_env "$INFO_PLIST" CMUX_BUNDLED_CLI_PATH "$TAG_APP_FINAL_PATH/Contents/Resources/bin/cmux"
+      set_plist_env "$INFO_PLIST" CMUX_BUNDLED_CLI_PATH "$TAG_APP_FINAL_PATH/Contents/Resources/bin/bmux"
       set_plist_env "$INFO_PLIST" CMUX_SHELL_INTEGRATION_DIR "$TAG_APP_FINAL_PATH/Contents/Resources/shell-integration"
       set_plist_env "$INFO_PLIST" CMUX_PORT "$CMUX_DEV_PORT"
       set_plist_env "$INFO_PLIST" CMUX_PORT_END "$CMUX_DEV_PORT_END"
@@ -1690,7 +1690,7 @@ if [[ -n "$TAG" && "$APP_NAME" != "$SEARCH_APP_NAME" ]]; then
   APP_PATH="$TAG_APP_STAGING_PATH"
 fi
 
-CLI_PATH="$(dirname "$APP_PATH")/cmux"
+CLI_PATH="$(dirname "$APP_PATH")/bmux"
 
 # Build cmuxd and ensure helper binaries are present (needed for both launch and no-launch).
 CMUXD_SRC="$PWD/cmuxd/zig-out/bin/cmuxd"
@@ -1731,7 +1731,7 @@ if [[ -n "${TAG_APP_FINAL_PATH:-}" && -n "${TAG_APP_STAGING_PATH:-}" ]]; then
   mv "$TAG_APP_STAGING_PATH" "$TAG_APP_FINAL_PATH"
   APP_PATH="$TAG_APP_FINAL_PATH"
 fi
-CLI_PATH="$APP_PATH/Contents/Resources/bin/cmux"
+CLI_PATH="$APP_PATH/Contents/Resources/bin/bmux"
 
 # Tag mode: always terminate the existing same-tag instance after a successful build,
 # even without --launch. A stale tagged app pinned to this bundle id would otherwise

@@ -1,4 +1,11 @@
-# cmux agent notes
+# bmux Agent Guidelines & Reference
+
+## Fork Purpose & Strategy
+This repository (`bmux`) is an open-source mirror and extension sandbox for upstream `cmux` (`manaflow-ai/cmux`).
+- **Primary Goals**: Build and test plugins, custom sidebars, custom commands/actions, and integrate tools/agents with the production version of `cmux`.
+- **Upstream Discipline**: Maintain clear modular separation for fork-specific extensions and integrations to ensure smooth rebases/merges with upstream `main`.
+
+---
 
 ## Setup
 
@@ -6,7 +13,7 @@
 
 ## Build and reload
 
-Always build with a tag. **Never run bare `xcodebuild` or `open` an untagged `cmux DEV.app`**: untagged builds share the default debug socket and bundle ID with other agents, causing conflicts and stealing focus.
+Always build with a tag. **Never run bare `xcodebuild` or `open` an untagged `bmux DEV.app`**: untagged builds share the default debug socket and bundle ID with other agents, causing conflicts and stealing focus.
 
 ```bash
 ./scripts/reload.sh --tag <branch-slug>            # build Debug, kill same-tag app, do not launch

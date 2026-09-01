@@ -24,7 +24,7 @@ let package = Package(
         // The same libghostty the Mac links; iOS feeds raw PTY bytes straight
         // into ghostty_surface_* so the phone runs the identical terminal core.
         .binaryTarget(
-            name: "GhosttyKit",
+            name: "GhosttyKitIOS",
             path: "../../../GhosttyKit.xcframework"
         ),
         .target(
@@ -35,7 +35,7 @@ let package = Package(
                 "CmuxMobileDiagnostics",
                 "CmuxMobileSupport",
                 "CmuxMobileTerminalKit",
-                "GhosttyKit",
+                "GhosttyKitIOS",
             ],
             swiftSettings: [
                 .swiftLanguageMode(.v6),

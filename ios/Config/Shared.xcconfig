@@ -6,8 +6,8 @@
 // ==========================================
 // Project Identity
 // ==========================================
-PRODUCT_NAME = cmux
-PRODUCT_DISPLAY_NAME = cmux
+PRODUCT_NAME = bmux
+PRODUCT_DISPLAY_NAME = bmux
 PRODUCT_BUNDLE_IDENTIFIER = dev.cmux.ios
 // User-visible versions (CFBundleShortVersionString). Keep beta and production
 // independent: TestFlight can stay on the already-approved beta version while

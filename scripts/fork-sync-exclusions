@@ -1,0 +1,41 @@
+# fork-sync-exclusions for bmux
+# Entries prefixed with keep-deleted: ensure deleted upstream paths remain deleted on sync.
+# Entries prefixed with take-theirs: ensure regenerable bundles take upstream version on conflict.
+
+# GitHub Actions workflows disabled for this fork
+keep-deleted: .github/workflows/ci.yml
+keep-deleted: .github/workflows/nightly.yml
+keep-deleted: .github/workflows/release.yml
+keep-deleted: .github/workflows/test-e2e.yml
+keep-deleted: .github/workflows/test-ios.yml
+keep-deleted: .github/workflows/test-linux.yml
+keep-deleted: .github/workflows/testbox-broker-guard.yml
+keep-deleted: .github/workflows/tui-publish-npm.yml
+keep-deleted: .github/workflows/tui-publish-pypi.yml
+keep-deleted: .github/workflows/tui-release.yml
+keep-deleted: .github/workflows/validate-pr.yml
+keep-deleted: .github/workflows/web-deploy.yml
+keep-deleted: .github/workflows/web-preview.yml
+keep-deleted: .github/workflows/webviews-test.yml
+keep-deleted: .github/workflows/ios-app-store.yml
+keep-deleted: .github/workflows/ios-testflight.yml
+keep-deleted: .github/workflows/release-local.yml
+keep-deleted: .github/workflows/release-nightly.yml
+keep-deleted: .github/workflows/release-sdk.yml
+keep-deleted: .github/workflows/release-tag.yml
+keep-deleted: .github/workflows/review-bot.yml
+keep-deleted: .github/workflows/sanitize-cache.yml
+keep-deleted: .github/workflows/scan-secrets.yml
+keep-deleted: .github/workflows/test-remote-tmux.yml
+keep-deleted: .github/workflows/test-signals.yml
+keep-deleted: .github/workflows/test-unit.yml
+keep-deleted: .github/workflows/update-appcast.yml
+keep-deleted: .github/workflows/update-docs.yml
+keep-deleted: .github/workflows/update-homebrew.yml
+keep-deleted: .github/workflows/updater-diagnostics.yml
+keep-deleted: .github/workflows/validate-commit.yml
+keep-deleted: .github/workflows/validate-merge.yml
+keep-deleted: .github/workflows/vm-test.yml
+keep-deleted: .github/workflows/warm-testbox.yml
+keep-deleted: .github/workflows/xcode-cache.yml
+keep-deleted: .github/workflows/xcframework.yml

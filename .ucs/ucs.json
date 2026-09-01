@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/ultracreative/uc-studio/main/assets/ucs.schema.json",
+  // The cross-project mailbox receives notes and requests from other registered projects.
+  // Use /project-mailbox to manage project connections interactively.
+  "cross_project_mailbox": {
+    // Sender entries use this shape:
+    // "<source-projectId>": { "access": "allow"|"deny", "intent_budget": "question"|"impl"|"plan" }
+    // The machine-global sender default comes from the user-level config.
+    "senders": {
+      "resume-builder-87fc2340": {
+        "access": "allow",
+        "intent_budget": "plan"
+      },
+      "uc-studio-8ce41322": {
+        "access": "allow",
+        "intent_budget": "plan"
+      },
+      "arcus-a3e4dd68": {
+        "access": "allow",
+        "intent_budget": "plan"
+      },
+      "opencode-228cc625": {
+        "access": "allow",
+        "intent_budget": "plan"
+      },
+      "lore-300dc729": {
+        "access": "allow",
+        "intent_budget": "question"
+      },
+      "opencode-interceptor-d1f55155": {
+        "access": "allow",
+        "intent_budget": "question"
+      },
+      "uc-interface-40ca84ce": {
+        "access": "allow",
+        "intent_budget": "question"
+      }
+    }
+  }
+}

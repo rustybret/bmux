@@ -1,0 +1,46 @@
+{
+  "pending": [
+    {
+      "messageId": "c2e4f52f-76f5-41b2-96a5-02fc15a9e61a",
+      "sessionId": "ses_fc8f9e562ffeX22Qi40vUTWos3",
+      "reservedPath": "/Users/brethoffman/bmux/.ucs/coordination_notes/cloudhome-5aa53d2c/.delivering-c2e4f52f-76f5-41b2-96a5-02fc15a9e61a.md",
+      "dispatchedAt": 1787769991589,
+      "downgradeReason": "classifier-error",
+      "lane": "triage",
+      "state": "history_confirmed"
+    },
+    {
+      "messageId": "115e491d-9f98-43e2-b0fe-0f6791ed4a31",
+      "sessionId": "ses_fc8f9e562ffeX22Qi40vUTWos3",
+      "reservedPath": "/Users/brethoffman/bmux/.ucs/coordination_notes/cloudhome-5aa53d2c/.delivering-115e491d-9f98-43e2-b0fe-0f6791ed4a31.md",
+      "dispatchedAt": 1787770111676,
+      "downgradeReason": "classifier-error",
+      "lane": "triage",
+      "state": "history_confirmed"
+    },
+    {
+      "messageId": "6c843c03-81ce-4a45-9ada-73340efe77a1",
+      "sessionId": "ses_fc8f9e562ffeX22Qi40vUTWos3",
+      "reservedPath": "/Users/brethoffman/bmux/.ucs/coordination_notes/lore-300dc729/.delivering-6c843c03-81ce-4a45-9ada-73340efe77a1.md",
+      "dispatchedAt": 1787783165042,
+      "lane": "triage",
+      "state": "history_confirmed"
+    },
+    {
+      "messageId": "77afcd45-e097-427e-bc2b-923bc0552482",
+      "sessionId": "ses_fc8f9e562ffeX22Qi40vUTWos3",
+      "reservedPath": "/Users/brethoffman/bmux/.ucs/coordination_notes/lore-300dc729/.delivering-77afcd45-e097-427e-bc2b-923bc0552482.md",
+      "dispatchedAt": 1787783237460,
+      "lane": "triage",
+      "state": "history_confirmed"
+    },
+    {
+      "messageId": "a2ebd7c6-9da7-4eeb-a343-a2f4031e609d",
+      "sessionId": "ses_fc8f9e562ffeX22Qi40vUTWos3",
+      "reservedPath": "/Users/brethoffman/bmux/.ucs/coordination_notes/lore-300dc729/.delivering-a2ebd7c6-9da7-4eeb-a343-a2f4031e609d.md",
+      "dispatchedAt": 1787783286545,
+      "lane": "triage",
+      "state": "history_confirmed"
+    }
+  ]
+}

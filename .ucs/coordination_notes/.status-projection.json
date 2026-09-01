@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "project_id": "bmux-87190e56",
+  "display_name": "bmux",
+  "published_at": 1787783301169,
+  "publisher_pid": 24486,
+  "liveness": "active",
+  "todos": [
+    {
+      "content": "[mailbox:a2ebd7c6-9da7-4eeb-a343-a2f4031e609d] lore confirmed misrouting acknowledged, no action needed",
+      "status": "completed",
+      "priority": "low"
+    },
+    {
+      "content": "[mailbox:77afcd45-e097-427e-bc2b-923bc0552482] Reply to lore project again: still addressing 'uc-interface' about lore-fleet-expansion phases - resolved, lore confirmed misrouting",
+      "status": "completed",
+      "priority": "medium"
+    },
+    {
+      "content": "[mailbox:6c843c03-81ce-4a45-9ada-73340efe77a1] Reply to lore project: their note addresses 'uc-interface' project - resolved, lore confirmed misrouting",
+      "status": "completed",
+      "priority": "medium"
+    },
+    {
+      "content": "[mailbox:115e491d-9f98-43e2-b0fe-0f6791ed4a31] Wire Mac Fleet build + packaging + GitHub release + Arcus manifest stamp pipeline per cloudhome's confirmed Option A architecture",
+      "status": "completed",
+      "priority": "high"
+    },
+    {
+      "content": "[Entitlements] Investigate whether Ghostty/libghostty terminal core requires JIT/unsigned-executable-memory/library-validation-disable entitlements",
+      "status": "completed",
+      "priority": "high"
+    },
+    {
+      "content": "[Entitlements] Create cmux.personal.entitlements and wire mac-fleet-release.sh to use it - rebuild, verify actual launch succeeds",
+      "status": "completed",
+      "priority": "high"
+    },
+    {
+      "content": "[Rebrand: build metadata] cmux.xcodeproj/project.pbxproj + ios/Config/*.xcconfig PRODUCT_NAME cmux to bmux - rebuild to verify",
+      "status": "completed",
+      "priority": "medium"
+    },
+    {
+      "content": "[Rebrand: scripts] reload.sh/reloadp.sh/reload2.sh + mac-fleet-release.sh/pack-arcus.sh/build-local-personal.sh hardcoded paths updated to match PRODUCT_NAME=bmux",
+      "status": "completed",
+      "priority": "medium"
+    },
+    {
+      "content": "[Verify] Run reload.sh --tag <test> end-to-end - build succeeded, launched, CLI worked against live socket",
+      "status": "completed",
+      "priority": "high"
+    },
+    {
+      "content": "[Rebrand: docs] AGENTS.md done. CONTRIBUTING.md needed no changes. README.md + CLI --help text intentionally skipped (upstream content, fork-sync conflict risk)",
+      "status": "completed",
+      "priority": "medium"
+    },
+    {
+      "content": "[App Icon] BLOCKED: asked user to save pasted icon image to AppIcon.icon/Assets/bmux-icon.png - once present, swap icon.json image-name and verify with build.",
+      "status": "pending",
+      "priority": "medium",
+      "blocked_reason": "BLOCKED: asked user to save pasted icon image to AppIcon.icon/Assets/bmux-icon.png - once present, swap icon.json image-name and verify with build."
+    }
+  ]
+}

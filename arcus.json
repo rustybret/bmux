@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "submodule": "submodules/arcus",
+  "skills": [],
+  "plugins": [],
+  "daemons": [
+    {
+      "name": "bmux",
+      "manifest": "manifests/bmux/v0.1.0.json"
+    }
+  ]
+}

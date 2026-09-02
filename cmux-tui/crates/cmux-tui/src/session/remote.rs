@@ -319,7 +319,7 @@ struct AgentUpdate {
 impl RemoteTreeCache {
     fn replace(&mut self, view: TreeView, refresh_generation: u64) {
         self.surface_tabs.clear();
-        for (workspace_index, workspace) in view.workspaces.iter().enumerate() {
+        for (workspace_index, workspace) in view.workspaces().iter().enumerate() {
             for (screen_index, screen) in workspace.screens.iter().enumerate() {
                 for (pane_index, pane) in screen.panes.iter().enumerate() {
                     for (tab_index, tab) in pane.tabs.iter().enumerate() {
@@ -358,25 +358,10 @@ impl RemoteTreeCache {
     }
 
     fn update_view_title(&mut self, surface_id: SurfaceId, title: String) -> bool {
-        let Some([workspace, screen, pane, tab]) = self.surface_tabs.get(&surface_id).copied()
-        else {
+        let Some(location) = self.surface_tabs.get(&surface_id).copied() else {
             return false;
         };
-        let Some(tab) = self
-            .view
-            .workspaces
-            .get_mut(workspace)
-            .and_then(|workspace| workspace.screens.get_mut(screen))
-            .and_then(|screen| screen.panes.get_mut(pane))
-            .and_then(|pane| pane.tabs.get_mut(tab))
-        else {
-            return false;
-        };
-        if tab.surface != surface_id {
-            return false;
-        }
-        tab.title = title;
-        true
+        self.view.update_surface_title_at(surface_id, location, &title).is_some()
     }
 
     fn title_generation(&self) -> u64 {
@@ -1057,6 +1042,73 @@ struct PendingRemoteRequest {
     attach_surface: Option<SurfaceId>,
 }
 
+#[derive(Default)]
+struct PendingRemoteRequests {
+    requests: HashMap<u64, PendingRemoteRequest>,
+    attach_surface_requests: HashMap<SurfaceId, HashSet<u64>>,
+}
+
+impl PendingRemoteRequests {
+    fn insert(&mut self, id: u64, request: PendingRemoteRequest) {
+        if let Some(surface) = request.attach_surface {
+            self.attach_surface_requests.entry(surface).or_default().insert(id);
+        }
+        self.requests.insert(id, request);
+    }
+
+    fn get(&self, id: &u64) -> Option<&PendingRemoteRequest> {
+        self.requests.get(id)
+    }
+
+    fn remove(&mut self, id: &u64) -> Option<PendingRemoteRequest> {
+        let request = self.requests.remove(id)?;
+        if let Some(surface) = request.attach_surface {
+            let mut remove_surface = false;
+            if let Some(ids) = self.attach_surface_requests.get_mut(&surface) {
+                ids.remove(id);
+                remove_surface = ids.is_empty();
+            }
+            if remove_surface {
+                self.attach_surface_requests.remove(&surface);
+            }
+        }
+        Some(request)
+    }
+
+    fn progress_for_attach_surface(&self, surface: SurfaceId) -> bool {
+        let Some(ids) = self.attach_surface_requests.get(&surface) else { return false };
+        let mut progressed = false;
+        for id in ids {
+            if let Some(request) = self.requests.get(id) {
+                request.progress.fetch_add(1, Ordering::Release);
+                progressed = true;
+            }
+        }
+        progressed
+    }
+
+    fn is_empty(&self) -> bool {
+        self.requests.is_empty()
+    }
+
+    fn len(&self) -> usize {
+        self.requests.len()
+    }
+
+    fn values(&self) -> impl Iterator<Item = &PendingRemoteRequest> {
+        self.requests.values()
+    }
+}
+
+impl IntoIterator for PendingRemoteRequests {
+    type Item = (u64, PendingRemoteRequest);
+    type IntoIter = std::collections::hash_map::IntoIter<u64, PendingRemoteRequest>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.requests.into_iter()
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum RemoteProgressTarget {
     Request(u64),
@@ -1519,7 +1571,7 @@ pub struct RemoteSession {
     /// reader failure so closing our own transport does not report a fake
     /// remote diagnostic.
     disconnect_state: Mutex<DisconnectState>,
-    pending: Mutex<HashMap<u64, PendingRemoteRequest>>,
+    pending: Mutex<PendingRemoteRequests>,
     next_id: AtomicU64,
     attach_progress: AtomicU64,
     shutdown: AtomicBool,
@@ -1877,7 +1929,7 @@ impl RemoteSession {
         let session = Arc::new(RemoteSession {
             interactive_writer,
             disconnect_state: Mutex::new(DisconnectState::default()),
-            pending: Mutex::new(HashMap::new()),
+            pending: Mutex::new(PendingRemoteRequests::default()),
             next_id: AtomicU64::new(1),
             attach_progress: AtomicU64::new(0),
             shutdown: AtomicBool::new(false),
@@ -2120,14 +2172,7 @@ impl RemoteSession {
                 }
             }
             RemoteProgressTarget::AttachSurface(surface) => {
-                let mut progressed = false;
-                for request in
-                    pending.values().filter(|request| request.attach_surface == Some(surface))
-                {
-                    request.progress.fetch_add(1, Ordering::Release);
-                    progressed = true;
-                }
-                progressed
+                pending.progress_for_attach_surface(surface)
             }
         };
         drop(pending);
@@ -3440,7 +3485,7 @@ impl RemoteSession {
         );
         drop(capabilities);
         let raw_surface_ids = tree
-            .workspaces
+            .workspaces()
             .iter()
             .flat_map(|workspace| workspace.screens.iter())
             .flat_map(|screen| screen.panes.iter())
@@ -3455,7 +3500,7 @@ impl RemoteSession {
         let mut tree = tree;
         tree.retain_not_retired(&retired_surface_ids);
         let live_surface_ids = tree
-            .workspaces
+            .workspaces()
             .iter()
             .flat_map(|workspace| workspace.screens.iter())
             .flat_map(|screen| screen.panes.iter())
@@ -3682,7 +3727,7 @@ fn dump_mirror(surface: &RemoteSurface) -> String {
 }
 
 fn browser_sources_from_tree(tree: &TreeView) -> HashMap<SurfaceId, BrowserSource> {
-    tree.workspaces
+    tree.workspaces()
         .iter()
         .flat_map(|ws| ws.screens.iter())
         .flat_map(|screen| screen.panes.iter())
@@ -3692,7 +3737,7 @@ fn browser_sources_from_tree(tree: &TreeView) -> HashMap<SurfaceId, BrowserSourc
 }
 
 fn browser_source_from_tree(tree: &TreeView, id: SurfaceId) -> Option<BrowserSource> {
-    tree.workspaces
+    tree.workspaces()
         .iter()
         .flat_map(|ws| ws.screens.iter())
         .flat_map(|screen| screen.panes.iter())
@@ -3851,7 +3896,7 @@ fn test_session_with_writer(
     Arc::new(RemoteSession {
         interactive_writer: InteractiveWriter::spawn(writer, Arc::new(NoopTransportAbort)).unwrap(),
         disconnect_state: Mutex::new(DisconnectState::default()),
-        pending: Mutex::new(HashMap::new()),
+        pending: Mutex::new(PendingRemoteRequests::default()),
         next_id: AtomicU64::new(1),
         attach_progress: AtomicU64::new(0),
         shutdown: AtomicBool::new(false),
@@ -5093,7 +5138,7 @@ mod tests {
         Arc::new(RemoteSession {
             interactive_writer: InteractiveWriter::spawn(writer, abort).unwrap(),
             disconnect_state: Mutex::new(DisconnectState::default()),
-            pending: Mutex::new(HashMap::new()),
+            pending: Mutex::new(PendingRemoteRequests::default()),
             next_id: AtomicU64::new(1),
             attach_progress: AtomicU64::new(0),
             shutdown: AtomicBool::new(false),
@@ -6094,7 +6139,7 @@ mod tests {
         session.ensure_initial(Some((80, 24))).unwrap();
 
         assert!(
-            session.tree().workspaces.iter().all(|workspace| workspace.screens.is_empty()),
+            session.tree().workspaces().iter().all(|workspace| workspace.screens.is_empty()),
             "an unguarded create must never run"
         );
     }
@@ -6525,6 +6570,40 @@ mod tests {
             Some(Duration::from_millis(7))
         );
         assert_eq!(deadline.next_wait(started + maximum, 3, 3), None);
+    }
+
+    #[test]
+    fn attach_progress_reverse_index_tracks_only_live_matching_requests() {
+        let mut pending = PendingRemoteRequests::default();
+        let unrelated_progress = Arc::new(AtomicU64::new(0));
+        for id in 0..1_000 {
+            pending.insert(
+                id,
+                PendingRemoteRequest {
+                    response: channel().0,
+                    progress: unrelated_progress.clone(),
+                    attach_surface: Some(8),
+                },
+            );
+        }
+        let matching_progress = Arc::new(AtomicU64::new(0));
+        pending.insert(
+            1_000,
+            PendingRemoteRequest {
+                response: channel().0,
+                progress: matching_progress.clone(),
+                attach_surface: Some(7),
+            },
+        );
+
+        assert!(pending.progress_for_attach_surface(7));
+        assert_eq!(matching_progress.load(Ordering::Acquire), 1);
+        assert_eq!(unrelated_progress.load(Ordering::Acquire), 0);
+
+        let removed = pending.remove(&1_000).expect("matching request is pending");
+        drop(removed);
+        assert!(!pending.progress_for_attach_surface(7));
+        assert_eq!(matching_progress.load(Ordering::Acquire), 1);
     }
 
     #[cfg(unix)]
@@ -7823,9 +7902,11 @@ mod tests {
             0,
         );
 
+        assert!(cache.view.location_index.get().is_none());
         assert!(cache.update_title(4, "server title".to_string()));
-        assert_eq!(cache.view.workspaces[0].screens[0].panes[0].tabs[0].title, "server title");
-        assert_eq!(cache.view.workspaces[1].screens[0].panes[0].tabs[0].title, "other title");
+        assert!(cache.view.location_index.get().is_none());
+        assert_eq!(cache.view.workspaces()[0].screens[0].panes[0].tabs[0].title, "server title");
+        assert_eq!(cache.view.workspaces()[1].screens[0].panes[0].tabs[0].title, "other title");
         assert!(!cache.update_title(99, "missing".to_string()));
     }
 
@@ -7853,7 +7934,7 @@ mod tests {
         assert!(cache.update_title(4, "event title".to_string()));
         cache.replace(tree("stale snapshot"), refresh_generation);
 
-        assert_eq!(cache.view.workspaces[0].screens[0].panes[0].tabs[0].title, "event title");
+        assert_eq!(cache.view.workspaces()[0].screens[0].panes[0].tabs[0].title, "event title");
     }
 
     #[test]
@@ -7880,7 +7961,7 @@ mod tests {
         let refresh_generation = cache.title_generation();
         cache.replace(tree("fresh snapshot"), refresh_generation);
 
-        assert_eq!(cache.view.workspaces[0].screens[0].panes[0].tabs[0].title, "fresh snapshot");
+        assert_eq!(cache.view.workspaces()[0].screens[0].panes[0].tabs[0].title, "fresh snapshot");
     }
 
     #[test]

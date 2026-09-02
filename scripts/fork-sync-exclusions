@@ -15,13 +15,16 @@ keep-deleted: .github/workflows/cmux-skill-contract.yml
 # Entries prefixed with take-theirs: ensure regenerable bundles take upstream version on conflict.
 
 # GitHub Actions workflows disabled for this fork
+keep-deleted: .github/workflows/*
 keep-deleted: .github/workflows/ci.yml
+keep-deleted: .github/workflows/cloud-vm-env-audit.yml
 keep-deleted: .github/workflows/nightly.yml
 keep-deleted: .github/workflows/release.yml
 keep-deleted: .github/workflows/test-e2e.yml
 keep-deleted: .github/workflows/test-ios.yml
 keep-deleted: .github/workflows/test-linux.yml
 keep-deleted: .github/workflows/testbox-broker-guard.yml
+keep-deleted: .github/workflows/tmux-corpus.yml
 keep-deleted: .github/workflows/tui-publish-npm.yml
 keep-deleted: .github/workflows/tui-publish-pypi.yml
 keep-deleted: .github/workflows/tui-release.yml

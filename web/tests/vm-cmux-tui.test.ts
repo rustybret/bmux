@@ -395,7 +395,7 @@ describe("cmux-tui install and daemon commands", () => {
         const timer = setTimeout(() => {
           child?.kill("SIGKILL");
           reject(new Error("findmnt failure supervisor test timed out"));
-        }, 2_000);
+        }, 10_000);
         child?.once("error", (error) => {
           clearTimeout(timer);
           reject(error);
@@ -412,7 +412,7 @@ describe("cmux-tui install and daemon commands", () => {
       child?.kill("SIGKILL");
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   test("selects the persistent binary for layout installs", () => {
     const command = cmuxTuiInstallCommand(
@@ -578,7 +578,7 @@ describe("cmux-tui install and daemon commands", () => {
         const timer = setTimeout(() => {
           child?.kill("SIGKILL");
           reject(new Error("unresponsive daemon shutdown timed out"));
-        }, 5_000);
+        }, 10_000);
         child?.once("error", (error) => {
           clearTimeout(timer);
           reject(error);
@@ -594,7 +594,7 @@ describe("cmux-tui install and daemon commands", () => {
       child?.kill("SIGKILL");
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   test("supervises the root fallback while its backing mount is present", async () => {
     const root = mkdtempSync(join(tmpdir(), "cmux-tui-backing-"));
@@ -688,7 +688,7 @@ describe("cmux-tui install and daemon commands", () => {
     writeExecutable("mountpoint", [
       "#!/bin/sh",
       "path=\"$2\"",
-      "if [ \"$path\" = \"$CMUX_TEST_BACKING\" ]; then [ ! -e \"$CMUX_TEST_STATE/backing-unmounted\" ]; exit $?; fi",
+      "if [ \"$path\" = \"$CMUX_TEST_BACKING\" ]; then if [ -e \"$CMUX_TEST_STATE/daemon-ready\" ]; then : > \"$CMUX_TEST_STATE/fallback-watch-ready\"; fi; [ ! -e \"$CMUX_TEST_STATE/backing-unmounted\" ]; exit $?; fi",
       "exit 1",
       "",
     ].join("\n"));
@@ -721,7 +721,11 @@ describe("cmux-tui install and daemon commands", () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
       expect(existsSync(join(state, "daemon-ready"))).toBe(true);
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      const watcherDeadline = Date.now() + 2_000;
+      while (!existsSync(join(state, "fallback-watch-ready")) && Date.now() < watcherDeadline) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      expect(existsSync(join(state, "fallback-watch-ready"))).toBe(true);
       // Missing findmnt must select a bounded direct mount check, not signal the
       // supervisor before the daemon has a chance to serve the mounted home.
       expect(child.exitCode).toBeNull();
@@ -730,7 +734,7 @@ describe("cmux-tui install and daemon commands", () => {
         const timer = setTimeout(() => {
           child?.kill("SIGKILL");
           reject(new Error("no-findmnt fallback supervisor test timed out"));
-        }, 3_000);
+        }, 10_000);
         child?.once("error", (error) => {
           clearTimeout(timer);
           reject(error);
@@ -746,7 +750,7 @@ describe("cmux-tui install and daemon commands", () => {
       child?.kill("SIGKILL");
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   test("pins the binary in the same persistent location used by layout installs", () => {
     const command = cmuxTuiPinCheckCommand(

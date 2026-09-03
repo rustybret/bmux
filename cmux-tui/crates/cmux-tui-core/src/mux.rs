@@ -62,8 +62,8 @@ use crate::terminal_host_runtime::TerminalHostLiveness;
 use crate::workspace_registry::{
     AgentHookPendingFailure, FrontendProjection, ProjectionCommit,
     RESOURCE_API_FRONTEND_PROJECTION_SCHEMA_VERSION, RegistryBrowser, RegistryBrowserReconnect,
-    RegistryCommit, RegistryLayoutNode, RegistrySnapshot, RegistryTab, RegistryTerminal,
-    RegistryViewport, RegistryWorkspace, ResourceChange, ResourceEffectOutcome,
+    RegistryCommit, RegistryLayoutNode, RegistryPane, RegistrySnapshot, RegistryTab,
+    RegistryTerminal, RegistryViewport, RegistryWorkspace, ResourceChange, ResourceEffectOutcome,
     ResourceEffectPreparation, ResourcePatch, ResourcePatchCommit, ResourceTopologySnapshot,
     ResourceWorkspaceLedger, TerminalLifecycle, TerminalOnExit, TerminalRegistrySnapshot,
     WorkspaceMutation, WorkspaceRegistry,
@@ -920,8 +920,24 @@ pub enum MuxEvent {
     PairingResolved {
         request: u64,
     },
+    /// The daemon's machine-level model spend readout changed. `None` means
+    /// the readout is unavailable and frontends must hide it.
+    MachineUsageChanged(Option<MachineUsage>),
     /// Every workspace is gone.
     Empty,
+}
+
+/// Machine-level model spend for the machine hosting this daemon, as
+/// reported by coderouter for the trailing `period_days` window. Frontends
+/// show it as an informational readout beside the machine identity.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MachineUsage {
+    pub vm_id: String,
+    pub period_days: u32,
+    pub total_tokens: u64,
+    pub api_equivalent_usd: f64,
+    /// Server-side timestamp of the snapshot, when known.
+    pub as_of: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2103,6 +2119,7 @@ pub struct Mux {
     default_colors: Mutex<DefaultColors>,
     durable_terminal_defaults: AtomicBool,
     sidebar_plugin: Mutex<SidebarPluginRuntime>,
+    machine_usage: Mutex<Option<MachineUsage>>,
     agent_records: Mutex<HashMap<TerminalPublicId, TerminalAgentRecord>>,
     agent_hook_fences: Mutex<HashMap<TerminalPublicId, HookFence>>,
     /// Nonterminal notifications remain placement-local. Terminal unread
@@ -2491,6 +2508,7 @@ impl Mux {
             default_colors: Mutex::new(default_colors),
             durable_terminal_defaults: AtomicBool::new(has_terminal_defaults),
             sidebar_plugin: Mutex::new(SidebarPluginRuntime::default()),
+            machine_usage: Mutex::new(None),
             agent_records: Mutex::new(agent_records),
             agent_hook_fences: Mutex::new(agent_hook_fences),
             placement_notifications: Mutex::new(HashMap::new()),
@@ -9566,6 +9584,25 @@ impl Mux {
         options.browser_session_name = self.session.clone();
     }
 
+    /// The latest machine-level model spend readout, or `None` when the
+    /// daemon has no usable readout.
+    pub fn machine_usage(&self) -> Option<MachineUsage> {
+        self.machine_usage.lock().unwrap().clone()
+    }
+
+    /// Replace the machine-level spend readout. Subscribers are told only
+    /// when the readout actually changed, so a steady poll stays silent.
+    pub fn set_machine_usage(&self, usage: Option<MachineUsage>) {
+        {
+            let mut current = self.machine_usage.lock().unwrap();
+            if *current == usage {
+                return;
+            }
+            *current = usage.clone();
+        }
+        self.emit(MuxEvent::MachineUsageChanged(usage));
+    }
+
     pub fn configure_sidebar_plugin(&self, options: Option<SidebarPluginOptions>) {
         let old_surface = {
             let mut runtime = self.sidebar_plugin.lock().unwrap();
@@ -16441,6 +16478,16 @@ impl Drop for Mux {
     }
 }
 
+fn expected_panes_by_screen(
+    panes: &[RegistryPane],
+) -> HashMap<ScreenPublicId, HashSet<PanePublicId>> {
+    let mut panes_by_screen: HashMap<ScreenPublicId, HashSet<PanePublicId>> = HashMap::new();
+    for pane in panes {
+        panes_by_screen.entry(pane.screen_id.clone()).or_default().insert(pane.public_id.clone());
+    }
+    panes_by_screen
+}
+
 fn restore_resource_state(
     snapshot: RegistrySnapshot,
     topology: ResourceTopologySnapshot,
@@ -16613,13 +16660,11 @@ fn restore_resource_state(
 
     let mut split_slots = HashMap::<SplitPublicId, SplitId>::new();
     let mut screens_by_workspace = HashMap::<WorkspacePublicId, Vec<(usize, Screen)>>::new();
+    let panes_by_screen = expected_panes_by_screen(&topology.panes);
+    let empty_expected_panes = HashSet::new();
     for screen in &topology.screens {
-        let expected_panes = topology
-            .panes
-            .iter()
-            .filter(|pane| pane.screen_id == screen.public_id)
-            .map(|pane| pane.public_id.clone())
-            .collect::<HashSet<_>>();
+        let expected_panes =
+            panes_by_screen.get(&screen.public_id).unwrap_or(&empty_expected_panes);
         crate::workspace_registry::validate_registry_screen_projection(screen, &expected_panes)?;
         let id = screen_slots[&screen.public_id];
         let root =
@@ -19216,6 +19261,30 @@ mod tests {
                 .unwrap()
                 .to_string()
                 .contains("unknown projected split")
+        );
+    }
+
+    #[test]
+    fn restore_screen_pane_index_preserves_validation_inputs() {
+        let (snapshot, topology) = resource_restore_fixture();
+        let first_screen = restore_screen_id(1);
+        let second_screen = restore_screen_id(2);
+
+        let mut duplicate_panes = topology.panes.clone();
+        duplicate_panes.push(duplicate_panes[0].clone());
+        let expected = expected_panes_by_screen(&duplicate_panes);
+        assert_eq!(expected.get(&first_screen).map(|panes| panes.len()), Some(4));
+        assert_eq!(expected.get(&second_screen).map(|panes| panes.len()), Some(1));
+        assert!(expected.get(&restore_screen_id(999)).is_none());
+
+        let mut mismatched = topology;
+        mismatched.panes[3].screen_id = second_screen.clone();
+        let expected = expected_panes_by_screen(&mismatched.panes);
+        assert_eq!(expected.get(&first_screen).map(|panes| panes.len()), Some(3));
+        assert_eq!(expected.get(&second_screen).map(|panes| panes.len()), Some(2));
+        assert_eq!(
+            restore_resource_state(snapshot, mismatched).err().unwrap().to_string(),
+            format!("screen {first_screen} layout does not cover its panes exactly once")
         );
     }
 

@@ -17,6 +17,7 @@ keep-deleted: .github/workflows/cmux-skill-contract.yml
 # GitHub Actions workflows disabled for this fork
 keep-deleted: .github/workflows/*
 keep-deleted: .github/workflows/ci.yml
+keep-deleted: .github/workflows/ci-status-fallback.yml
 keep-deleted: .github/workflows/cloud-vm-env-audit.yml
 keep-deleted: .github/workflows/nightly.yml
 keep-deleted: .github/workflows/release.yml
@@ -33,6 +34,7 @@ keep-deleted: .github/workflows/web-deploy.yml
 keep-deleted: .github/workflows/web-preview.yml
 keep-deleted: .github/workflows/webviews-test.yml
 keep-deleted: .github/workflows/ios-app-store.yml
+keep-deleted: .github/workflows/ios-screenshots.yml
 keep-deleted: .github/workflows/ios-testflight.yml
 keep-deleted: .github/workflows/release-local.yml
 keep-deleted: .github/workflows/release-nightly.yml

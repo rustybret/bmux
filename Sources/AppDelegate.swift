@@ -946,7 +946,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var transientGlobalSearchMenuBarExtraController: MenuBarExtraController?
     private var lastMenuBarExtraShouldInstall: Bool?
     /// App-owned computer-use graph; all runtime dependencies are injected here.
-    private lazy var computerUseUXCoordinator: ComputerUseUXCoordinator = {
+    private(set) lazy var computerUseUXCoordinator: ComputerUseUXCoordinator = {
         guard let computerUseRuntimeService else {
             preconditionFailure("ComputerUseRuntimeService must be injected before coordinator use")
         }
@@ -8827,7 +8827,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                     mode: .base(workspaceID: workspace.id),
                     plan: MachineSnapshotBuilder.planSnapshot(activeCount: page?.vms.count ?? 0, limits: page?.limits),
                     memoryOptionsMb: page?.limits?.memoryOptionsMb ?? [],
-                    imageKinds: page?.limits?.imageKinds ?? [],
                     submit: { [weak self] request in
                         guard let self else { return false }
                         return MachineCreateCoordinator.shared.start(request, cancellableLaunch: { [weak self] arguments, progress, completion in

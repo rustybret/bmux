@@ -34,6 +34,7 @@ keep-deleted: .github/workflows/tui-release.yml
 keep-deleted: .github/workflows/validate-pr.yml
 keep-deleted: .github/workflows/web-deploy.yml
 keep-deleted: .github/workflows/web-preview.yml
+keep-deleted: .github/workflows/web-validation.yml
 keep-deleted: .github/workflows/webviews-test.yml
 keep-deleted: .github/workflows/ios-app-store.yml
 keep-deleted: .github/workflows/ios-screenshots.yml

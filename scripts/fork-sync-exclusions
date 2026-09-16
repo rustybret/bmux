@@ -28,6 +28,16 @@ keep-deleted: .github/workflows/test-ios.yml
 keep-deleted: .github/workflows/test-linux.yml
 keep-deleted: .github/workflows/testbox-broker-guard.yml
 keep-deleted: .github/workflows/tmux-corpus.yml
+keep-deleted: .github/workflows/cmux-tui.yml
+keep-deleted: .github/workflows/cmux-tui-artifacts.yml
+keep-deleted: .github/workflows/cmux-tui-build-package.yml
+keep-deleted: .github/workflows/cmux-tui-nightly.yml
+keep-deleted: .github/workflows/cmux-tui-release.yml
+keep-deleted: .github/workflows/cmux-tui-release-cut.yml
+keep-deleted: .github/workflows/cmux-tui-release-delivery.yml
+keep-deleted: .github/workflows/cmux-tui-sdks.yml
+keep-deleted: .github/workflows/cmux-tui-spec.yml
+keep-deleted: .github/workflows/cmux-tui-testbox-warmup.yml
 keep-deleted: .github/workflows/tui-publish-npm.yml
 keep-deleted: .github/workflows/tui-publish-pypi.yml
 keep-deleted: .github/workflows/tui-release.yml

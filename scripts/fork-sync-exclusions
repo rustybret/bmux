@@ -54,6 +54,7 @@ keep-deleted: .github/workflows/release-local.yml
 keep-deleted: .github/workflows/release-nightly.yml
 keep-deleted: .github/workflows/release-sdk.yml
 keep-deleted: .github/workflows/release-tag.yml
+keep-deleted: .github/workflows/remote-daemon.yml
 keep-deleted: .github/workflows/review-bot.yml
 keep-deleted: .github/workflows/sanitize-cache.yml
 keep-deleted: .github/workflows/scan-secrets.yml

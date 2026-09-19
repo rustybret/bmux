@@ -21,6 +21,7 @@ keep-deleted: .github/workflows/ci-status-fallback.yml
 keep-deleted: .github/workflows/cloud-provider-release-guard.yml
 keep-deleted: .github/workflows/cloud-vm-env-audit.yml
 keep-deleted: .github/workflows/cloud-vm-image-reachability.yml
+keep-deleted: .github/workflows/cloud-machine-tests.yml
 keep-deleted: .github/workflows/nightly.yml
 keep-deleted: .github/workflows/release.yml
 keep-deleted: .github/workflows/test-e2e.yml

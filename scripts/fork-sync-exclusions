@@ -17,6 +17,9 @@ keep-deleted: .github/workflows/cmux-skill-contract.yml
 # GitHub Actions workflows disabled for this fork
 keep-deleted: .github/workflows/*
 keep-deleted: .github/workflows/ci.yml
+keep-deleted: .github/workflows/ci-artifact-canary.yml
+keep-deleted: .github/workflows/ci-artifact-transport.yml
+keep-deleted: .github/workflows/ci-cache-receipts.yml
 keep-deleted: .github/workflows/ci-macos-compat.yml
 keep-deleted: .github/workflows/ci-stale-run-janitor.yml
 keep-deleted: .github/workflows/ci-status-fallback.yml

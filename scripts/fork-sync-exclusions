@@ -18,6 +18,7 @@ keep-deleted: .github/workflows/cmux-skill-contract.yml
 keep-deleted: .github/workflows/*
 keep-deleted: .github/workflows/ci.yml
 keep-deleted: .github/workflows/ci-macos-compat.yml
+keep-deleted: .github/workflows/ci-stale-run-janitor.yml
 keep-deleted: .github/workflows/ci-status-fallback.yml
 keep-deleted: .github/workflows/cli-pipe-regressions.yml
 keep-deleted: .github/workflows/cloud-provider-release-guard.yml

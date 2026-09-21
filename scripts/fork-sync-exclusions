@@ -24,11 +24,13 @@ keep-deleted: .github/workflows/ci-macos-compat.yml
 keep-deleted: .github/workflows/ci-stale-run-janitor.yml
 keep-deleted: .github/workflows/ci-status-fallback.yml
 keep-deleted: .github/workflows/cli-pipe-regressions.yml
-keep-deleted: .github/workflows/cloud-provider-release-guard.yml
 keep-deleted: .github/workflows/cloud-command-deadlines.yml
+keep-deleted: .github/workflows/cloud-machine-tests.yml
+keep-deleted: .github/workflows/cloud-provider-release-guard.yml
+keep-deleted: .github/workflows/cloud-task-local-tests.yml
 keep-deleted: .github/workflows/cloud-vm-env-audit.yml
 keep-deleted: .github/workflows/cloud-vm-image-reachability.yml
-keep-deleted: .github/workflows/cloud-machine-tests.yml
+keep-deleted: .github/workflows/cmux-cloud-cli.yml
 keep-deleted: .github/workflows/merge-group-policy-checks.yml
 keep-deleted: .github/workflows/nightly.yml
 keep-deleted: .github/workflows/perf-activation.yml

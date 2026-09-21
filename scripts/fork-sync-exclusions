@@ -7,6 +7,7 @@
 # Upstream CLA Assistant workflow (requires workflow PAT scope not held by automated sync bot)
 keep-deleted: .github/workflows/cla.yml
 keep-deleted: .github/workflows/cla-policy-guard.yml
+keep-deleted: .github/workflows/agent-pr-review-gate.yml
 
 # Upstream cmux skill contract workflow (requires workflow PAT scope not held by automated sync bot)
 keep-deleted: .github/workflows/cmux-skill-contract.yml

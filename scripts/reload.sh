@@ -1321,8 +1321,8 @@ fi
 # tag-named bundle. An explicit base-name override removes that staging
 # boundary, so build-only would overwrite the bundle a running tagged process
 # can be executing from. Refuse that shape before any cleanup or build starts.
-if [[ "$BUILD_ONLY" -eq 1 && "$NAME_SET" -eq 1 && "$APP_NAME" == "$BASE_APP_NAME" ]]; then
-  echo "error: --build-only cannot use --name '$BASE_APP_NAME'; omit --name or choose a distinct tagged app name" >&2
+if [[ "$BUILD_ONLY" -eq 1 && "$NAME_SET" -eq 1 && ( "$APP_NAME" == "$BASE_APP_NAME" || "$APP_NAME" == "cmux DEV" || "$APP_NAME" == "bmux DEV" ) ]]; then
+  echo "error: --build-only cannot use --name '$APP_NAME'; omit --name or choose a distinct tagged app name" >&2
   exit 1
 fi
 

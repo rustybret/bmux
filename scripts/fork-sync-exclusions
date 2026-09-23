@@ -54,6 +54,7 @@ keep-deleted: .github/workflows/cmux-tui-release-delivery.yml
 keep-deleted: .github/workflows/cmux-tui-sdks.yml
 keep-deleted: .github/workflows/cmux-tui-spec.yml
 keep-deleted: .github/workflows/cmux-tui-testbox-warmup.yml
+keep-deleted: .github/workflows/contributor-welcome.yml
 keep-deleted: .github/workflows/tui-publish-npm.yml
 keep-deleted: .github/workflows/tui-publish-pypi.yml
 keep-deleted: .github/workflows/tui-release.yml

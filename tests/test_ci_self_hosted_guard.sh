@@ -185,7 +185,7 @@ import sys
 import yaml
 
 document = yaml.safe_load(open(sys.argv[1]))
-# Compilation caching and the fast artifact transport are optimizations with
+# Compilation caching, adopted DerivedData and the fast artifact transport are optimizations with
 # canonical fallbacks. Everything else must fail the job it runs in.
 allowed = {
     ("build", "compilation-cache-restore", "Restore E2E compilation cache", "actions/cache/restore"),
@@ -193,6 +193,10 @@ allowed = {
     ("build", "compilation-cache-bound", "Bound E2E compilation cache", ""),
     ("build", "revision-on-main", "Check the selected revision against main", ""),
     ("build", "reuse", "Reuse a compiled product instead of building one", ""),
+    ("build", "warm", "Adopt main's DerivedData", ""),
+    ("build", "record-inputs", "Record build input times", ""),
+    ("build", "warm-package", "Package DerivedData for later builds", ""),
+    ("build", None, "Publish DerivedData for later builds", "actions/upload-artifact"),
     ("test", "parallel-product", "Read the compiled test product over parallel range requests", ""),
 }
 for job_id, job in document["jobs"].items():
@@ -1834,7 +1838,7 @@ import yaml
 # regardless of where the pull-request lane points.
 EXEMPT = {
     ("iroh-release-gate.yml", "tailscale-version-skew", "CMUX_CI_XCODE_APP"):
-        "streamed validation lane, routed by MACOS_RUNNER_STREAMED_VALIDATION",
+        "builds against the SDK 15 toolchain; stays on MACOS_RUNNER_15",
     ("ci-macos.yml", "swift-package-tests", "CMUX_CI_XCODE_APP"):
         "builds the SDK 15 Ghostty helper; stays on MACOS_RUNNER_DUAL_XCODE",
     ("ci-macos.yml", "swift-package-tests", "CMUX_CI_HELPER_XCODE_APP"):

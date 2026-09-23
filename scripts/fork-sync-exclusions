@@ -123,3 +123,14 @@ keep-deleted: .github/workflows/sdk-release-cut.yml
 keep-deleted: .github/workflows/vercel-auth-health.yml
 keep-deleted: .github/workflows/web-complexity-trusted.yml
 keep-deleted: .github/workflows/web-complexity.yml
+keep-deleted: .github/workflows/ci-health-report.yml
+keep-deleted: .github/workflows/ci-macos.yml
+keep-deleted: .github/workflows/ci-main-full-suite.yml
+keep-deleted: .github/workflows/ci-queue-janitor.yml
+keep-deleted: .github/workflows/ci-web.yml
+keep-deleted: .github/workflows/cloudflare-relay.yml
+keep-deleted: .github/workflows/persistent-macos-compile.yml
+keep-deleted: .github/workflows/persistent-macos-router.yml
+keep-deleted: .github/workflows/required-checks-drift.yml
+keep-deleted: .github/workflows/resolve-dispatch-ref.yml
+keep-deleted: .github/workflows/triage-radar.yml

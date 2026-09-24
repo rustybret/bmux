@@ -34,6 +34,7 @@ keep-deleted: .github/workflows/cloud-vm-image-reachability.yml
 keep-deleted: .github/workflows/cmux-cloud-cli.yml
 keep-deleted: .github/workflows/merge-group-policy-checks.yml
 keep-deleted: .github/workflows/nightly.yml
+keep-deleted: .github/workflows/nightly-mini-build.yml
 keep-deleted: .github/workflows/perf-activation.yml
 keep-deleted: .github/workflows/plain-paste-worker.yml
 keep-deleted: .github/workflows/release.yml

@@ -135,6 +135,53 @@ def test_open_wrapper_changes_skip_the_release_build() -> None:
     assert actual.release_build is False, (paths, actual)
 
 
+def test_resources_bin_release_neutral_inputs_are_text_scripts() -> None:
+    # The Release lane validates compiled binaries' slices; a bundled text
+    # script cannot fail it. A binary in this list would skip that check.
+    scripts = sorted(p for p in module.RELEASE_BUILD_NEUTRAL_INPUTS if p.startswith("Resources/bin/"))
+    assert scripts
+    for path in scripts:
+        data = (ROOT / path).read_bytes()
+        assert b"\0" not in data, f"{path} is not a text script"
+        actual = module.classify_files([path])
+        assert actual.macos is True, (path, actual)
+        assert actual.release_build is False, (path, actual)
+
+
+def test_linux_guard_only_scripts_reach_no_other_runner() -> None:
+    references = module.load_macos_job_test_references(ROOT)
+    assert references is not None
+    guard_jobs = yaml.safe_load(GUARD_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+    for path in sorted(module.LINUX_GUARD_ONLY_SCRIPTS):
+        assert (ROOT / path).is_file(), path
+        # The stem, so a name built as stem + ".py" is found too.
+        name = path.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+        referrers = subprocess.run(
+            ["git", "grep", "-lF", name], cwd=ROOT, capture_output=True, text=True, check=True,
+        ).stdout.split()
+        for referrer in referrers:
+            if referrer in {path, "scripts/ci/detect_ci_change_areas.py"} or referrer.endswith(".md"):
+                continue
+            if referrer == ".github/workflows/ci-guards.yml":
+                for job_name, job in guard_jobs.items():
+                    if name in yaml.safe_dump(job):
+                        assert module.is_plainly_linux_runner(str(job.get("runs-on", ""))), (path, job_name)
+                continue
+            if referrer.startswith("tests/"):
+                assert module.is_guard_only_test(referrer, references), (path, referrer)
+                continue
+            if referrer.endswith(".swift"):
+                # Comments and failure messages may point at the lint, but a
+                # Swift file that names it must not launch processes at all.
+                source = (ROOT / referrer).read_text(encoding="utf-8")
+                launches = r"\bProcess\s*[.(]|executableURL|launchPath|posix_spawn|\bNSTask\b|\bsystem\(|\bpopen\("
+                assert not re.search(launches, source), (path, referrer)
+                continue
+            raise AssertionError(f"{referrer} names {path}; it may run on a Mac")
+        actual = module.classify_files([path])
+        assert not (actual.macos or actual.release_build or actual.web or actual.cli), (path, actual)
+
+
 def test_anything_the_app_can_build_from_runs_the_release_build() -> None:
     for path in (
         "Sources/AppDelegate.swift",
@@ -738,7 +785,7 @@ def test_standalone_routes_preserve_missing_empty_and_owned_diffs() -> None:
             if contents is not None:
                 changed.write_text(contents)
             output = root / "output.txt"
-            subprocess.run(["bash", "-c", script], check=True, capture_output=True,
+            subprocess.run(["bash", "-c", isolate_ci_tmp(script, root)], check=True, capture_output=True,
                            env={**os.environ, "CHANGED_FILES": str(changed), "GITHUB_OUTPUT": str(output)})
             assert output.read_text().splitlines() == [f"claude_wrapper={wrapper}", f"browser={browser}", f"remote_daemon={daemon}", f"remote_daemon_native={daemon}"]
 
@@ -763,7 +810,7 @@ def test_publishing_changes_keep_daemon_linux_checks_without_native_rerun() -> N
             changed, output = root / "changed", root / "output"
             if contents is not None:
                 changed.write_text(contents)
-            subprocess.run(["bash", "-c", script], check=True, capture_output=True,
+            subprocess.run(["bash", "-c", isolate_ci_tmp(script, root)], check=True, capture_output=True,
                            env={**os.environ, "CHANGED_FILES": str(changed), "GITHUB_OUTPUT": str(output)})
             values = dict(line.split("=", 1) for line in output.read_text().splitlines())
             assert values["remote_daemon"] == "true", (contents, values)
@@ -784,9 +831,9 @@ def test_diff_failure_does_not_look_like_a_known_empty_standalone_diff() -> None
         env = {**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"],
                "EVENT_NAME": "pull_request", "BASE_SHA": "missing", "MERGE_SHA": "missing",
                "CHANGED_FILES": str(changed), "GITHUB_OUTPUT": str(output)}
-        subprocess.run(["bash", "-c", detector], env=env, capture_output=True, check=True)
+        subprocess.run(["bash", "-c", isolate_ci_tmp(detector, root)], env=env, capture_output=True, check=True)
         assert not changed.exists(), "failed git diff must not leave its truncated output behind"
-        subprocess.run(["bash", "-c", route], env=env, capture_output=True, check=True)
+        subprocess.run(["bash", "-c", isolate_ci_tmp(route, root)], env=env, capture_output=True, check=True)
         assert output.read_text().splitlines()[-3:] == ["browser=true", "remote_daemon=true", "remote_daemon_native=true"]
 
 
@@ -1700,7 +1747,7 @@ def run_detect_step_for_ci_workflow_edit(base: str, head: str) -> tuple[subproce
             "RUNNER_TEMP": os.environ.get("RUNNER_TEMP") or str(runner_temp),
         }
         result = subprocess.run(
-            ["bash", "-c", script], cwd=repo, env=env, text=True,
+            ["bash", "-c", isolate_ci_tmp(script, repo)], cwd=repo, env=env, text=True,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
         )
         return result, output_path.read_text(encoding="utf-8").splitlines()
@@ -1810,6 +1857,17 @@ def workflow_job_block(job_name: str, workflow_path: Path = CI_WORKFLOW) -> str:
                 body.append(body_line)
             return "\n".join(body)
     raise AssertionError(f"{job_name} job not found")
+
+
+def isolate_ci_tmp(script: str, directory: Path) -> str:
+    """Point a workflow step's fixed /tmp/cmux-* files into `directory`.
+
+    On a runner each job has its own /tmp. Locally, two suites on one host (a
+    parallel guard sweep, or another checkout) would share and overwrite
+    those files: one run then reads another's changed-file list, sees an empty
+    diff, and routes nothing.
+    """
+    return script.replace("/tmp/cmux-", f"{directory}/cmux-")
 
 
 def workflow_job_step_script(job_name: str, step_name: str, workflow_path: Path = CI_WORKFLOW) -> str:
@@ -2165,8 +2223,8 @@ def run_detect_step_for_paths(
         for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"):
             git_env.pop(name, None)
         # Parallel local checkouts must not share the workflow's fixed /tmp files.
-        script = script.replace("/tmp/cmux-ci-", str(repo / "cmux-ci-"))
-        route = route.replace("/tmp/cmux-ci-", str(repo / "cmux-ci-"))
+        script = isolate_ci_tmp(script, repo)
+        route = isolate_ci_tmp(route, repo)
         subprocess.run(["git", "init", "-q"], cwd=repo, env=git_env, check=True)
         subprocess.run(["git", "config", "user.email", "ci@example.test"], cwd=repo, env=git_env, check=True)
         subprocess.run(["git", "config", "user.name", "CI Test"], cwd=repo, env=git_env, check=True)
@@ -2466,7 +2524,7 @@ def test_workflow_diff_failure_runs_all_areas() -> None:
             "RUNNER_TEMP": os.environ.get("RUNNER_TEMP") or str(runner_temp),
         }
         result = subprocess.run(
-            ["bash", "-c", script],
+            ["bash", "-c", isolate_ci_tmp(script, repo)],
             cwd=repo,
             env=env,
             text=True,
@@ -2547,7 +2605,7 @@ def run_detect_step_on_shallow_synthetic_merge(*, stale_event_base: bool) -> tup
 
         output_path = shallow / "github-output.txt"
         result = subprocess.run(
-            ["bash", "-c", script],
+            ["bash", "-c", isolate_ci_tmp(script, root)],
             cwd=shallow,
             env={
                 **os.environ,
@@ -2760,7 +2818,7 @@ def test_standalone_route_fails_open_without_a_readable_ci_workflow_base() -> No
     for base in (None, "not a workflow\n"):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            routed = script.replace("/tmp/cmux-ci-", str(root / "cmux-ci-"))
+            routed = isolate_ci_tmp(script, root)
             (root / "cmux-ci-changed-files.txt").write_text(".github/workflows/ci.yml\n")
             if base is not None:
                 (root / "cmux-ci-base-workflow.yml").write_text(base)
@@ -4539,10 +4597,15 @@ def test_static_preflight_rejects_stale_embedded_schema_before_native_work() -> 
         assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_guard_workflow_call_preserves_routes_and_static_gate() -> None:
+def test_guard_workflow_call_preserves_routes_and_starts_beside_static_checks() -> None:
     block = workflow_job_block("guards")
 
-    assert "    needs: [changes, static-preflight]" in block
+    # Guards are the last job macos-admission-gate waits for. Starting them
+    # beside Fast static checks, not after, opens the gate ~25 s sooner; the
+    # gate itself still requires static-preflight, so macOS never starts on a
+    # diff those checks reject.
+    assert "    needs: [changes]" in block
+    assert "static-preflight" in workflow_job_block("macos-admission-gate")
     assert "    uses: ./.github/workflows/ci-guards.yml" in block
     for route in GUARD_ROUTE_JOBS:
         assert f"      {route}: ${{{{ needs.changes.outputs.{route} }}}}" in block
@@ -4679,11 +4742,12 @@ def test_history_guard_uses_shallow_synthetic_merge_parent() -> None:
         ]
 
 
-def test_web_workflow_call_preserves_routes_and_static_gate() -> None:
+def test_web_workflow_call_preserves_routes_and_starts_beside_static_checks() -> None:
     block = workflow_job_block("web")
     assert "needs.changes.outputs.macos != 'false'" not in block
 
-    assert "    needs: [changes, static-preflight]" in block
+    # On web pull requests, web finishes after the guards; see the guards test.
+    assert "    needs: [changes]" in block
     assert "    uses: ./.github/workflows/ci-web.yml" in block
     for route in ("web", "macos", "agent_session_web"):
         assert f"      {route}: ${{{{ needs.changes.outputs.{route} }}}}" in block
@@ -5579,7 +5643,7 @@ def test_claude_wrapper_scope_executes_workflow_shell() -> None:
             if paths is not None:
                 changed.write_text("\n".join(paths) + "\n")
             output = root / "output.txt"
-            run = subprocess.run(["bash", "-c", script.replace("/tmp/cmux-ci-changed-files.txt", str(changed))],
+            run = subprocess.run(["bash", "-c", isolate_ci_tmp(script.replace("/tmp/cmux-ci-changed-files.txt", str(changed)), root)],
                                  env={**os.environ, "GITHUB_OUTPUT": str(output)}, capture_output=True, text=True)
             assert run.returncode == 0, run.stderr
             assert f"claude_wrapper={expected}" in output.read_text().splitlines(), (paths, output.read_text())
@@ -5650,8 +5714,62 @@ def test_claude_wrapper_job_rejects_missing_node_before_legacy_skip() -> None:
         assert not marker.exists(), "Node preflight must fail before the legacy test could report SKIP"
 
 
+def _run_named_test(name: str) -> tuple[str, str | None]:
+    import traceback
+
+    try:
+        globals()[name]()
+    except BaseException:
+        return name, traceback.format_exc()
+    return name, None
+
+
+def _main() -> int:
+    names = sorted(name for name, value in globals().items() if name.startswith("test_") and callable(value))
+    # Most of these tests wait on git and the router in subprocesses, so they
+    # overlap well. Each runs in its own forked worker: a test that patches
+    # module state or the environment cannot leak into the next one.
+    # CMUX_TEST_WORKERS=1 runs them in order in this process, as before.
+    requested = os.environ.get("CMUX_TEST_WORKERS", "")
+    if requested and not requested.isdigit():
+        print(f"CMUX_TEST_WORKERS must be a whole number, got {requested!r}", file=sys.stderr)
+        return 2
+    workers = int(requested) if requested else len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else 1
+    if workers <= 1 or sys.platform != "linux":
+        for name in names:
+            globals()[name]()
+        return 0
+    import multiprocessing
+
+    failures = []
+    with multiprocessing.get_context("fork").Pool(workers, maxtasksperchild=1) as pool:
+        results = pool.imap_unordered(_run_named_test, names)
+        pending = set(names)
+        while pending:
+            try:
+                # A worker that dies outright (a signal, os._exit) never
+                # returns its test, and Pool would wait forever.
+                name, error = results.next(timeout=600)
+            except multiprocessing.TimeoutError:
+                failures.extend(
+                    (name, "no result within 600 s: the test hung or its worker died\n")
+                    for name in sorted(pending)
+                )
+                pool.terminate()
+                break
+            pending.discard(name)
+            if error:
+                failures.append((name, error))
+    for name, error in sorted(failures):
+        print(f"FAIL: {name}\n{error}", file=sys.stderr)
+    if failures:
+        print(f"{len(failures)} of {len(names)} tests failed", file=sys.stderr)
+        return 1
+    return 0
+
+
 if __name__ == "__main__":
-    for name, value in sorted(globals().items()):
-        if name.startswith("test_") and callable(value):
-            value()
-    print("PASS: CI change area filter")
+    if _main() == 0:
+        print("PASS: CI change area filter")
+    else:
+        sys.exit(1)

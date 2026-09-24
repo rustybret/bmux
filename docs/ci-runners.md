@@ -4,9 +4,11 @@ Every CI/CD job picks its runner from a repository variable instead of a
 hardcoded label. Changing a runner type is a single repository-variable update
 that takes effect on the next workflow run.
 
-Linux uses Blacksmith. macOS uses Blacksmith cloud runners. WarpBuild is paid
-overflow and is not a steady state for any lane. Non-urgent macOS work runs on
-free GitHub-hosted runners through the background lane described below.
+Linux uses Blacksmith. macOS uses Blacksmith cloud runners, with the
+self-hosted Tart fleet described below carrying specific lanes as they are
+qualified. WarpBuild is paid overflow and is not a steady state for any lane.
+Non-urgent macOS work runs on free GitHub-hosted runners through the
+background lane described below.
 
 **The table below is the intended steady state, not a live readout.** Repository
 variables drift, and a stale table is worse than no table. For what is actually
@@ -69,9 +71,10 @@ the same cost profile or the same urgency.
   `MACOS_RUNNER_*` variables above. This is the lane where a slow or queued
   runner blocks a merge or a ship, so it is the lane worth paying for if paid
   capacity is ever warranted.
-- **Pull requests** resolve through `MACOS_RUNNER_PR` first. Unset means
-  Blacksmith. PR runs are cancelled on supersession by design, so they are the
-  wrong place to spend elastic paid capacity.
+- **Pull requests on `manaflow-ai/cmux`** resolve through `MACOS_RUNNER_PR`
+  first. Unset means the Blacksmith fallback. PR runs are cancelled on
+  supersession by design, so they are the wrong place to spend elastic paid
+  capacity. A fork uses the GitHub-hosted branch described below instead.
 - **Manual test debugging** (`test-e2e.yml`, `test-macos-suite.yml`) resolves through
   `MACOS_RUNNER_TESTS`, and deliberately does **not** follow `MACOS_RUNNER_15`.
   Re-running one test to chase a flake should never reach for paid capacity.
@@ -141,18 +144,25 @@ request both resolve through `MACOS_RUNNER_PR`, so a job reading only
 not on. `check_macos_runner_identity_env_tracks_routing` in
 `tests/test_ci_self_hosted_guard.sh` enforces that.
 
-Workflows reference them as `runs-on: ${{ vars.LINUX_RUNNER || 'blacksmith-4vcpu-ubuntu-2404' }}`.
-If a variable is unset the job uses the fallback, so CI is never broken by a
-missing variable. Pull requests from forks never see repository variables, so
-the fallback is where they always run: it must be a Blacksmith label, never the
-paid Warp overflow. `tests/test_ci_self_hosted_guard.sh` enforces that, and
-also asserts that no workflow names a Warp label as a literal anywhere.
+Every workflow exercised by a `pull_request` — including local reusable
+workflows reached through `workflow_call` — has an explicit repository-owner
+branch before runner variables are consulted. On `manaflow-ai/cmux`, existing
+repository variables and their Blacksmith fallbacks behave exactly as above. On
+every other owner, Linux jobs use `ubuntu-24.04` and macOS jobs use
+`macos-15` from GitHub Actions.
 
-Because forks cannot see repository variables, a fork pull request resolves
-`MACOS_RUNNER_PR` and `MACOS_RUNNER_TESTS` to empty and lands on the Blacksmith
-fallback, never on paid capacity. `test-e2e.yml` is `workflow_dispatch`-only,
-so a fork never reaches its fallback at all; for the lanes a fork does reach,
-the fallback is still the runner they used before these variables existed.
+That is the fork contract: **a fork needs zero runner variables and zero runner
+provider setup to run its pull-request workflows.** Blacksmith is an
+organization-level GitHub App; naming a `blacksmith-*` label in a personal
+fork does not produce a useful error, it leaves the job queued indefinitely.
+The fork branch therefore short-circuits before any `MACOS_RUNNER_*` or
+`LINUX_RUNNER` value can select organization-only capacity.
+
+`tests/test_ci_fork_runner_routing.py` discovers every `pull_request`
+workflow, recursively follows its local reusable-workflow calls, and requires
+every variable-routed `runs-on` in that closure to contain a hosted fork
+branch. The upstream branch still keeps literal Blacksmith fallbacks so deleting
+a repository variable cannot silently change `manaflow-ai/cmux` capacity.
 
 ## Background lane
 
@@ -266,11 +276,31 @@ compile, warning validation, product publication, total wall time, runner time,
 and the `hot` / `partially-warm` / `cold-reset` / `hosted fallback`
 classification.
 
+## Tart isolation and capacity
+
+Each GitHub runner identity is sealed into a Tart template. A job runs in a
+fresh clone with an Aqua login session, then the host deletes the clone. This
+provides the GUI session required by macOS XCTest and prevents DerivedData,
+simulators, credentials, and workspaces from leaking into later jobs.
+
+The fleet has 18 Sequoia slots: two each on the seven 48 GB or larger hosts and
+one each on the two 16 GB hosts. The 16 large-host slots accept GUI and iOS
+jobs; all 18 accept ordinary macOS 15 jobs. macOS 26 and release builds stay on
+Blacksmith until a Tahoe VM image passes the same runner and GUI canaries. Hosts
+reject new jobs below their free-space threshold, delete every job VM after
+use, and reap stale clones.
+
+Do not route jobs to the physical mini runner records. The supported
+self-hosted labels are the `tart-*` labels, and each Tart-aware canary checks
+that the resolved runner name starts with `tart-cmux-` and that the guest has
+the immutable `/etc/cmux-tart-ci` marker.
+
 ## Shared physical-host interoperability
 
-The current required-CI policy uses hosted providers. Any future path that
-executes directly on shared CMUX-owned hardware must preserve a separate caller
-identity, semantic workload request, and machine-local physical lease.
+The current required-CI policy continues to use isolated Tart guests or hosted
+providers. Any future path that executes directly on shared CMUX-owned hardware
+must preserve a separate caller identity, semantic workload request, and
+machine-local physical lease.
 
 Examples of callers that may share a host include GitHub Actions, `cmux-ci`,
 developer/build tooling, direct agents, operator commands, and reviewed fleet
@@ -299,8 +329,9 @@ admission or is draining, pressured, or unavailable.
 
 ## Break-glass: switch a runner type to a paid provider
 
-There is no automatic overflow. If the Blacksmith queue is too long, set the
-affected variable to a paid provider, and restore it once the queue recovers.
+There is no automatic overflow. If the Tart pool is unavailable or its queue is
+too long, set the affected variable to a paid provider. Restore Tart after the
+fleet recovers.
 
 Four runner variables exist to name **metered WarpBuild capacity**, so they are
 read through a second switch that lives in this repository rather than in
@@ -348,6 +379,26 @@ Leave `MACOS_RUNNER_PR` and `MACOS_RUNNER_TESTS` unset in either recipe.
 They exist to hold the pull-request and manual test lanes on Blacksmith
 independently of whatever the pool above is set to.
 
+Restore the self-hosted pool with explicit labels. The gate above applies
+here too: `MACOS_RUNNER_15`, `MACOS_RUNNER_DISPLAY` and the other gated
+variables are read only when `CI_PAID_MACOS_OVERFLOW=1`, so Tart needs that
+flag set even though Tart is free. Without it, these values are ignored and
+every lane stays on its Blacksmith fallback, with no error. `MACOS_RUNNER_26`
+is ungated, so repointing the ordinary macOS 26 pool does not require the paid
+overflow switch.
+
+```bash
+gh variable set MACOS_RUNNER_15         --repo manaflow-ai/cmux -b tart-macos-15
+gh variable set MACOS_RUNNER_DUAL_XCODE --repo manaflow-ai/cmux -b blacksmith-6vcpu-macos-15
+gh variable set MACOS_RUNNER_26         --repo manaflow-ai/cmux -b blacksmith-6vcpu-macos-26
+gh variable set MACOS_RUNNER_26_LARGE   --repo manaflow-ai/cmux -b blacksmith-12vcpu-macos-26
+gh variable set MACOS_RUNNER_DISPLAY    --repo manaflow-ai/cmux -b tart-gui
+gh variable set MACOS_RUNNER_IOS        --repo manaflow-ai/cmux -b tart-ios
+```
+
+`MACOS_RUNNER_DUAL_XCODE` remains on Blacksmith because the Tart macOS 15
+image currently carries Xcode 26 only and cannot build the SDK 15 helper.
+
 Check current values:
 
 ```bash
@@ -361,7 +412,9 @@ defaults to `auto`. Manual `auto` runs follow `MACOS_RUNNER_15` then the Blacksm
 fallback, so flipping the repo variable redirects those workflows. An explicit
 manual choice wins over the variable; both dropdowns expose Blacksmith, Warp,
 and `depot-macos-*` choices, with a Depot identity guard for GUI-activation
-runs. These choices are available only through `workflow_dispatch`.
+runs. `test-e2e.yml` also exposes `tart-canary`, `tart-dual`, and `tart-small`
+for targeted fleet validation. These choices are available only through
+`workflow_dispatch`.
 
 ## Guard
 
@@ -381,9 +434,9 @@ repository per minute, since Blacksmith is sponsored for this organization.
 The CI health report counts those two. Keep new labels in
 `.github/actionlint.yaml`.
 
-The fleet-label guard rejects `tart-*` labels everywhere; the Tart VM pool no
-longer exists. Required jobs continue to reference repository variables, so
-cutover and break-glass remain configuration changes instead of workflow edits.
+The fleet-label guard allows Tart labels only as exact manual canary choices.
+Required jobs continue to reference repository variables, so cutover and
+break-glass remain configuration changes instead of workflow edits.
 
 ## CMUX-owned machine enrollment
 
@@ -414,4 +467,5 @@ carries no repository secrets, and grants its hot state zero result authority.
 Every required macOS fallback still routes to the paid hosted path.
 `check_no_self_hosted_fleet_runners` in
 `tests/test_ci_self_hosted_guard.sh` enforces that exact exception and rejects
-any second required-job or generic fleet route.
+any second required-job or generic fleet route. Repository variables may keep
+pointing at the isolated `tart-*` pool for their existing jobs.

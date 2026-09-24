@@ -68,6 +68,7 @@ keep-deleted: .github/workflows/ios-app-store.yml
 keep-deleted: .github/workflows/ios-screenshots.yml
 keep-deleted: .github/workflows/ios-testflight.yml
 keep-deleted: .github/workflows/iroh-v2.yml
+keep-deleted: .github/workflows/iroh-v2-production-drift.yml
 keep-deleted: .github/workflows/release-local.yml
 keep-deleted: .github/workflows/release-nightly.yml
 keep-deleted: .github/workflows/release-sdk.yml

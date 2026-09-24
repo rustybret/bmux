@@ -135,4 +135,12 @@ keep-deleted: .github/workflows/persistent-macos-compile.yml
 keep-deleted: .github/workflows/persistent-macos-router.yml
 keep-deleted: .github/workflows/required-checks-drift.yml
 keep-deleted: .github/workflows/resolve-dispatch-ref.yml
+keep-deleted: .github/workflows/resolve-runners.yml
+keep-deleted: .github/workflows/seed-derived-data.yml
+keep-deleted: .github/workflows/seed-swiftpm-manifests.yml
+keep-deleted: .github/workflows/test-macos-suite.yml
 keep-deleted: .github/workflows/triage-radar.yml
+keep-deleted: .github/workflows/app-host-test-rerun.yml
+keep-deleted: .github/workflows/ci-owned-pool-rescue.yml
+keep-deleted: .github/workflows/cloud-vm-guest-install.yml
+keep-deleted: .github/workflows/r2-cache-prune.yml

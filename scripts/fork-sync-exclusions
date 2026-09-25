@@ -152,3 +152,4 @@ keep-deleted: .github/workflows/merge-receipt.yml
 keep-deleted: .github/workflows/main-regression-bisect.yml
 keep-deleted: .github/workflows/nightly-tag-permission-probe.yml
 keep-deleted: .github/workflows/repair-v0-64-25-helper-rpaths.yml
+keep-deleted: .github/workflows/pr-catch-up.yml

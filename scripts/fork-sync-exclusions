@@ -93,7 +93,9 @@ keep-deleted: .github/workflows/xcode-cache.yml
 keep-deleted: .github/workflows/xcframework.yml
 keep-deleted: .github/workflows/auth-refresh-tests.yml
 keep-deleted: .github/workflows/build-ghosttykit.yml
+keep-deleted: .github/workflows/ci-fast-guards.yml
 keep-deleted: .github/workflows/ci-guards.yml
+keep-deleted: .github/workflows/ci-repo-variables.yml
 keep-deleted: .github/workflows/claude.yml
 keep-deleted: .github/workflows/cloud-vm-image-contract.yml
 keep-deleted: .github/workflows/cloud-vm-migrate.yml

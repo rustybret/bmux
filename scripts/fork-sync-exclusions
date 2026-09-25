@@ -148,3 +148,4 @@ keep-deleted: .github/workflows/cloud-vm-guest-install.yml
 keep-deleted: .github/workflows/cloud-vm-canary.yml
 keep-deleted: .github/workflows/command-palette-search-benchmarks.yml
 keep-deleted: .github/workflows/r2-cache-prune.yml
+keep-deleted: .github/workflows/merge-receipt.yml

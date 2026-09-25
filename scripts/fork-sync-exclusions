@@ -143,6 +143,7 @@ keep-deleted: .github/workflows/test-macos-suite.yml
 keep-deleted: .github/workflows/triage-radar.yml
 keep-deleted: .github/workflows/app-host-test-rerun.yml
 keep-deleted: .github/workflows/ci-owned-pool-rescue.yml
+keep-deleted: .github/workflows/ci-owned-warm-labels.yml
 keep-deleted: .github/workflows/cloud-vm-guest-install.yml
 keep-deleted: .github/workflows/cloud-vm-canary.yml
 keep-deleted: .github/workflows/command-palette-search-benchmarks.yml

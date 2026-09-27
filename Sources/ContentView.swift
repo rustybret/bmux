@@ -7733,6 +7733,16 @@ struct ContentView: View {
                 keywords: ["update", "upgrade", "release"]
             )
         )
+        if let target = AppChannelSwitchTarget.counterpart(ofBundleIdentifier: Bundle.main.bundleIdentifier) {
+            contributions.append(
+                CommandPaletteCommandContribution(
+                    commandId: "palette.switchAppChannel",
+                    title: constant(AppChannelSwitchPresenter.actionTitle(for: target)),
+                    subtitle: constant(String(localized: "command.checkForUpdates.subtitle", defaultValue: "Global")),
+                    keywords: ["nightly", "stable", "channel", "switch", "install"]
+                )
+            )
+        }
         contributions.append(
             CommandPaletteCommandContribution(
                 commandId: "palette.applyUpdateIfAvailable",
@@ -8964,6 +8974,9 @@ struct ContentView: View {
         }
         registry.register(commandId: "palette.checkForUpdates") {
             AppDelegate.shared?.checkForUpdates(nil)
+        }
+        registry.register(commandId: "palette.switchAppChannel") {
+            AppDelegate.shared?.switchAppChannel(nil)
         }
         registry.register(commandId: "palette.applyUpdateIfAvailable") {
             AppDelegate.shared?.applyUpdateIfAvailable(nil)
@@ -15806,6 +15819,11 @@ struct TabItemView: View, Equatable {
     // percent here and applying a primitive `.font(...)` keeps magnification
     // working while dropping those per-label modifier bodies.
     @Environment(\.cmuxGlobalFontMagnificationPercent) private var globalFontMagnificationPercent
+    // Window activation and Increase Contrast only: the selection wash dims to
+    // neutral when the window is inactive, like Finder. Neither changes per
+    // keystroke.
+    @Environment(\.controlActiveState) private var controlActiveState
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 #if DEBUG
     // Plain-value environment probe (closure struct, not an object reference):
     // set only by SidebarLazyLayoutScaleTests, default no-op, excluded from ==
@@ -15908,7 +15926,9 @@ struct TabItemView: View, Equatable {
     private var selectedWorkspaceBackgroundNSColor: NSColor {
         sidebarSelectedWorkspaceBackgroundNSColor(
             for: colorScheme,
-            sidebarSelectionColorHex: sidebarSelectionColorHex
+            sidebarSelectionColorHex: sidebarSelectionColorHex,
+            activeTabIndicatorStyle: activeTabIndicatorStyle,
+            subtleSelection: settings.subtleSelection
         )
     }
 
@@ -15961,21 +15981,21 @@ struct TabItemView: View, Equatable {
         explicitRailColor(for: workspaceSnapshot) != nil
     }
 
-    private var activeBorderLineWidth: CGFloat {
+    private func activeBorderLineWidth(for style: SidebarWorkspaceRowBackgroundStyle) -> CGFloat {
         switch activeTabIndicatorStyle {
         case .leftRail:
-            return 0
+            return style.edgeColor == nil ? 0 : 1
         case .solidFill:
             return isActive ? 1.5 : 0
         }
     }
 
-    private var activeBorderColor: Color {
-        guard isActive else { return .clear }
+    private func activeBorderColor(for style: SidebarWorkspaceRowBackgroundStyle) -> Color {
         switch activeTabIndicatorStyle {
         case .leftRail:
-            return .clear
+            return style.edgeColor.map { Color(nsColor: $0) } ?? .clear
         case .solidFill:
+            guard isActive else { return .clear }
             return Color.primary.opacity(0.5)
         }
     }
@@ -16102,7 +16122,10 @@ struct TabItemView: View, Equatable {
 #endif
         let signpost = SidebarProfilingSignposts.begin("sidebar-tab-item-body", "index=\(index) workspace=\(sidebarShortTabId(workspaceId)) active=\(isActive) unread=\(unreadCount)")
         let workspaceSnapshot = self.workspaceSnapshot
-        let rowBackgroundColor = backgroundColor(for: workspaceSnapshot)
+        let rowBackgroundStyle = backgroundStyle(for: workspaceSnapshot)
+        let rowBackgroundColor = rowBackgroundStyle.color.map {
+            Color(nsColor: $0).opacity(rowBackgroundStyle.opacity)
+        } ?? .clear
         let rowRailColor = railColor(for: workspaceSnapshot)
         let accessibilityTitle = workspaceSnapshot.accessibilityLabel(index: index, workspaceCount: accessibilityWorkspaceCount)
         let closeWorkspaceTooltip = String(localized: "sidebar.closeWorkspace.tooltip", defaultValue: "Close Workspace")
@@ -16537,7 +16560,10 @@ struct TabItemView: View, Equatable {
                 .fill(rowBackgroundColor)
                 .overlay {
                     RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(activeBorderColor, lineWidth: activeBorderLineWidth)
+                        .strokeBorder(
+                            activeBorderColor(for: rowBackgroundStyle),
+                            lineWidth: activeBorderLineWidth(for: rowBackgroundStyle)
+                        )
                 }
                 .overlay(alignment: .leading) {
                     if showsLeadingRail(for: workspaceSnapshot) {
@@ -16649,19 +16675,20 @@ struct TabItemView: View, Equatable {
         isEditing = true
     }
 
-    private func backgroundColor(
+    private func backgroundStyle(
         for workspaceSnapshot: SidebarWorkspaceSnapshotBuilder.Snapshot
-    ) -> Color {
-        let style = sidebarWorkspaceRowBackgroundStyle(
+    ) -> SidebarWorkspaceRowBackgroundStyle {
+        sidebarWorkspaceRowBackgroundStyle(
             activeTabIndicatorStyle: activeTabIndicatorStyle,
             isActive: isActive,
             isMultiSelected: isMultiSelected,
             customColorHex: workspaceSnapshot.customColorHex,
             colorScheme: colorScheme,
-            sidebarSelectionColorHex: sidebarSelectionColorHex
+            sidebarSelectionColorHex: sidebarSelectionColorHex,
+            subtleSelection: settings.subtleSelection,
+            isEmphasized: controlActiveState != .inactive,
+            increaseContrast: colorSchemeContrast == .increased
         )
-        guard let color = style.color else { return .clear }
-        return Color(nsColor: color).opacity(style.opacity)
     }
 
     private func railColor(

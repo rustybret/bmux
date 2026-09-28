@@ -161,3 +161,6 @@ keep-deleted: .github/workflows/pr-media-prune.yml
 keep-deleted: .github/workflows/ci-failure-attribution.yml
 keep-deleted: .github/workflows/ci-guard-attribution.yml
 keep-deleted: .github/workflows/cloud-vm-dogfood.yml
+keep-deleted: .github/workflows/auto-triage.yml
+keep-deleted: .github/workflows/labels-sync.yml
+

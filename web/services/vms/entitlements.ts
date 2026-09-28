@@ -115,7 +115,7 @@ function resolveBillingContext(
 } {
   const requestedTeamId = normalizedOptionalString(options.requestedBillingTeamId);
   if (requestedTeamId) {
-    const team = user.teams.find((candidate) => candidate.id === requestedTeamId);
+    const team = user.teams?.find((candidate) => candidate.id === requestedTeamId);
     if (!team) {
       throw new VmBillingTeamResolutionError({
         code: "vm_billing_team_not_found",
@@ -140,7 +140,7 @@ function resolveBillingContext(
     };
   }
 
-  if (user.teams.length > 1) {
+  if ((user.teams?.length ?? 0) > 1) {
     throw new VmBillingTeamResolutionError({
       code: "vm_billing_team_required",
       status: 409,

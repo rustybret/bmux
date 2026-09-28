@@ -158,3 +158,4 @@ keep-deleted: .github/workflows/repair-v0-64-25-helper-rpaths.yml
 keep-deleted: .github/workflows/pr-catch-up.yml
 keep-deleted: .github/workflows/ci-failure-attribution.yml
 keep-deleted: .github/workflows/ci-guard-attribution.yml
+keep-deleted: .github/workflows/cloud-vm-dogfood.yml

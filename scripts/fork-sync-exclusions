@@ -167,4 +167,7 @@ keep-deleted: .github/workflows/ci-cloud-overflow-probe.yml
 keep-deleted: .github/workflows/ci-compile-attribution.yml
 keep-deleted: .github/workflows/ios-e2e.yml
 keep-deleted: .github/workflows/main-compile-probe.yml
+keep-deleted: .github/workflows/ci-fail-fast.yml
+keep-deleted: .github/workflows/ci-manual-dispatch-guard.yml
+keep-deleted: .github/workflows/feature-flag-review-drift.yml
 

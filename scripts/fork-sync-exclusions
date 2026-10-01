@@ -171,4 +171,5 @@ keep-deleted: .github/workflows/ci-fail-fast.yml
 keep-deleted: .github/workflows/ci-manual-dispatch-guard.yml
 keep-deleted: .github/workflows/feature-flag-review-drift.yml
 keep-deleted: .github/workflows/test-feed-reply-providers.yml
+keep-deleted: .github/workflows/main-submodule-pin-watch.yml
 

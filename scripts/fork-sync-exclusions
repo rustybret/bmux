@@ -92,6 +92,7 @@ keep-deleted: .github/workflows/vm-test.yml
 keep-deleted: .github/workflows/warm-testbox.yml
 keep-deleted: .github/workflows/xcode-cache.yml
 keep-deleted: .github/workflows/xcframework.yml
+keep-deleted: .github/workflows/cmux-terminal-client-xcframework.yml
 keep-deleted: .github/workflows/auth-refresh-tests.yml
 keep-deleted: .github/workflows/build-ghosttykit.yml
 keep-deleted: .github/workflows/ci-fast-guards.yml

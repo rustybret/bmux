@@ -173,4 +173,7 @@ keep-deleted: .github/workflows/ci-manual-dispatch-guard.yml
 keep-deleted: .github/workflows/feature-flag-review-drift.yml
 keep-deleted: .github/workflows/test-feed-reply-providers.yml
 keep-deleted: .github/workflows/main-submodule-pin-watch.yml
+keep-deleted: .github/workflows/backend-migrations.yml
+keep-deleted: .github/workflows/cmux-next-frame-pacing.yml
+keep-deleted: .github/workflows/fleet-artifact-cdn.yml
 

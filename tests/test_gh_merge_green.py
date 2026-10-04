@@ -14,6 +14,7 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 HEAD = "a" * 40
 BASE = "b" * 40
+ANCESTOR = "c" * 40
 NAMES = ("cmux-next Release compile (Xcode 26)", "cmux app scheme compile (Debug)", "cmux-next swift test")
 BUILD_STEPS = ("Release compile", "Compile the cmux scheme", "Build package and tests")
 TEST_STEP = "Run WebKit driver package tests"
@@ -30,6 +31,10 @@ class FakeGitHub:
         self.pr = {"state": "open", "head": {"sha": HEAD}, "base": {"sha": BASE, "ref": "feat-cmux-next"}, "mergeable": True}
         self.head_checks = []
         self.base_checks = []
+        self.ancestor_checks = []
+        self.parents = {BASE: []}
+        self.compare_files = []
+        self.compare_entries = None
         self.jobs = {}
         self.logs = {}
         for i, (name, step) in enumerate(zip(NAMES, BUILD_STEPS), 1):
@@ -43,8 +48,17 @@ class FakeGitHub:
     def json(self, route, *, paginate=False):
         if route.endswith("pulls/42"):
             return copy.deepcopy(self.pr)
+        if "/compare/" in route:
+            return {"files": self.compare_entries if self.compare_entries is not None else [{"filename": path} for path in self.compare_files]}
         if "/commits/" in route:
-            return [{"check_runs": copy.deepcopy(self.head_checks if HEAD in route else self.base_checks)}]
+            sha = route.split("/commits/", 1)[1].split("/", 1)[0]
+            if "/check-runs" not in route:
+                return {"sha": sha, "parents": [{"sha": parent} for parent in self.parents.get(sha, [])]}
+            if sha == ANCESTOR:
+                checks = self.ancestor_checks
+            else:
+                checks = self.head_checks if HEAD in route else self.base_checks
+            return [{"check_runs": copy.deepcopy(checks)}]
         if "/actions/jobs/" in route:
             return copy.deepcopy(self.jobs[int(route.rsplit("/", 1)[1])])
         if "/files" in route:
@@ -136,6 +150,60 @@ class MainFixEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(module.Refused, "base"):
             self.validate()
 
+    def test_missing_base_run_uses_nearest_ancestor_and_audits_why(self):
+        """Path-filtered base changes use and audit the nearest ancestor run."""
+        self.gh.fail_test()
+        self.gh.base_checks = []
+        self.gh.parents[BASE] = [ANCESTOR]
+        ancestor = copy.deepcopy(self.gh.head_checks[2])
+        ancestor.update(id=31, head_sha=ANCESTOR, details_url="https://github.com/manaflow-ai/cmux/actions/runs/21/job/31")
+        self.gh.ancestor_checks = [ancestor]
+        self.gh.compare_files = ["plans/cmux-next/path-filtered.md"]
+        ancestor_job = copy.deepcopy(self.gh.jobs[3])
+        ancestor_job.update(id=31, head_sha=ANCESTOR, run_id=21)
+        self.gh.jobs[31] = ancestor_job
+        self.gh.logs[31] = test_log()
+        evidence = self.validate()
+        self.assertIn(f"nearest ancestor `{ANCESTOR}`", evidence)
+        self.assertIn("intervening changes are path-filtered", evidence)
+        self.assertIn("/job/31", evidence)
+
+    def test_ancestor_fallback_rejects_intervening_source_changes(self):
+        """Source changes between the ancestor and base refuse the fallback."""
+        self.gh.fail_test()
+        self.gh.base_checks = []
+        self.gh.parents[BASE] = [ANCESTOR]
+        ancestor = copy.deepcopy(self.gh.head_checks[2])
+        ancestor.update(id=31, head_sha=ANCESTOR, details_url="https://github.com/manaflow-ai/cmux/actions/runs/21/job/31")
+        self.gh.ancestor_checks = [ancestor]
+        self.gh.compare_files = ["Packages/macOS/CmuxNext/Sources/Changed.swift"]
+        with self.assertRaisesRegex(module.Refused, "intervening changes may affect the test"):
+            self.validate()
+
+    def test_ancestor_fallback_rejects_renamed_source_file(self):
+        """Renames out of source paths cannot masquerade as docs-only changes."""
+        self.gh.fail_test()
+        self.gh.base_checks = []
+        self.gh.parents[BASE] = [ANCESTOR]
+        ancestor = copy.deepcopy(self.gh.head_checks[2])
+        ancestor.update(id=31, head_sha=ANCESTOR, details_url="https://github.com/manaflow-ai/cmux/actions/runs/21/job/31")
+        self.gh.ancestor_checks = [ancestor]
+        self.gh.compare_entries = [{"filename": "docs/cmux-next/renamed.md", "previous_filename": "Packages/macOS/CmuxNext/Sources/Changed.swift"}]
+        with self.assertRaisesRegex(module.Refused, "intervening changes may affect the test"):
+            self.validate()
+
+    def test_ancestor_fallback_rejects_compare_file_cap(self):
+        """A capped compare response cannot prove all intervening paths are safe."""
+        self.gh.fail_test()
+        self.gh.base_checks = []
+        self.gh.parents[BASE] = [ANCESTOR]
+        ancestor = copy.deepcopy(self.gh.head_checks[2])
+        ancestor.update(id=31, head_sha=ANCESTOR, details_url="https://github.com/manaflow-ai/cmux/actions/runs/21/job/31")
+        self.gh.ancestor_checks = [ancestor]
+        self.gh.compare_entries = [{"filename": "plans/path-filtered.md"}] * 300
+        with self.assertRaisesRegex(module.Refused, "300-file limit"):
+            self.validate()
+
     def test_timeout_or_setup_failure_is_not_a_test_failure(self):
         self.gh.fail_test()
         self.gh.jobs[3]["steps"][-1]["name"] = "Fetch dependencies"
@@ -213,6 +281,7 @@ class InstalledHelperRegression(unittest.TestCase):
             "if [ \"$1 $2\" = 'pr merge' ]; then printf '%s\\n' merge >> \"$EVENT_LOG\"; touch \"$MERGE_MARKER\"; exit 0; fi\n"
             "if [ \"$1\" = api ] && printf '%s' \"$*\" | grep -q '/check-runs'; then "
             "printf '%s\\n' '[{\"check_runs\":[{\"id\":1,\"name\":\"" + check_name + "\",\"status\":\"completed\",\"conclusion\":\"" + check_conclusion + "\"}]}]'; exit 0; fi\n"
+            "if [ \"$1\" = api ] && printf '%s' \"$*\" | grep -q '/contents/'; then printf '%s\\n' 'HTTP/2.0 200'; exit 0; fi\n"
             "if [ \"$1\" = api ]; then printf '%s\\n' '[]'; exit 0; fi\n"
             "exit 2\n"
         )
@@ -301,6 +370,9 @@ class InstalledHelperRegression(unittest.TestCase):
                   touch "$MERGE_MARKER"
                   exit 0
                 fi
+                if [ "$1" = api ] && printf '%s' "$*" | grep -q '/contents/'; then
+                  printf '%s\\n' 'HTTP/2.0 200'; exit 0
+                fi
                 if [ "$1" = api ] && printf '%s' "$*" | grep -q '/pulls/42/files'; then
                   case "$*" in
                     *'.[].filename'*) i=0; while [ "$i" -lt 100000 ]; do printf '%s\\n' 'Sources/Large.swift'; i=$((i + 1)); done ;;
@@ -336,6 +408,90 @@ class InstalledHelperRegression(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertFalse(marker.exists())
             self.assertIn("conflict", result.stderr)
+
+
+class WorkflowPresenceRegression(unittest.TestCase):
+    """Repositories without the aggregate workflow use all exact-head verdicts."""
+
+    def run_case(self, *, workflow=False, probe_status=404, checks=None, statuses=None, app_workflow=False, files=None):
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            marker = directory / "merged"
+            queries = directory / "queries"
+            payload = {"head": HEAD, "workflow": workflow, "probe_status": probe_status,
+                       "checks": checks if checks is not None else [{"id": 1, "name": "tests", "status": "completed", "conclusion": "success"}],
+                       "statuses": statuses or [], "app_workflow": app_workflow, "files": files or []}
+            fixture = directory / "fixture.json"
+            fixture.write_text(__import__("json").dumps(payload))
+            gh = directory / "gh"
+            gh.write_text("#!/usr/bin/env python3\n" + textwrap.dedent(r"""
+                import json, os, sys
+                from pathlib import Path
+                x = json.loads(Path(os.environ['FIXTURE']).read_text())
+                a = sys.argv[1:]
+                with open(os.environ['QUERIES'], 'a') as f: f.write(' '.join(a) + '\n')
+                if a[:2] == ['pr', 'view']:
+                    print(json.dumps({'headRefOid': x['head'], 'baseRefName': 'main', 'state': 'OPEN'}))
+                elif a[:2] == ['pr', 'merge']:
+                    Path(os.environ['MERGE_MARKER']).touch()
+                elif a[0] == 'api' and any('/contents/' in arg for arg in a):
+                    present = x['app_workflow'] if any('ci-macos.yml' in arg for arg in a) else x['workflow']
+                    code = 200 if present else x['probe_status']
+                    print('HTTP/2.0 ' + str(code))
+                    print()
+                    print('{}')
+                    sys.exit(0 if code == 200 else 1)
+                elif a[0] == 'api' and any('/check-runs' in arg for arg in a):
+                    print(json.dumps([{'check_runs': x['checks']}]))
+                elif a[0] == 'api' and any('/statuses' in arg for arg in a):
+                    print(json.dumps([x['statuses']]))
+                elif a[0] == 'api' and any('/files' in arg for arg in a):
+                    if '.[].filename' in a: print('\n'.join(x['files']))
+                else:
+                    sys.exit(2)
+                """))
+            gh.chmod(0o755)
+            result = subprocess.run([str(ROOT / 'scripts/gh-merge-green'), 'manaflow-ai/cmuxterm-hq#1254', '--squash'],
+                env={**os.environ, 'PATH': str(directory) + os.pathsep + os.environ['PATH'], 'FIXTURE': str(fixture), 'MERGE_MARKER': str(marker), 'QUERIES': str(queries)}, capture_output=True, text=True)
+            return result, marker.exists(), queries.read_text()
+
+    def test_no_ci_workflow_merges_all_green_checks(self):
+        result, merged, queries = self.run_case()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(merged)
+        self.assertIn('ref=main', queries)
+        self.assertIn('/commits/' + HEAD + '/check-runs', queries)
+
+    def test_no_ci_workflow_refuses_pending_failed_and_empty_checks(self):
+        for checks in ([], [{'id': 1, 'name': 'tests', 'status': 'in_progress'}],
+                       [{'id': 1, 'name': 'tests', 'status': 'completed', 'conclusion': 'failure'}]):
+            with self.subTest(checks=checks):
+                result, merged, _ = self.run_case(checks=checks)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(merged)
+                self.assertIn('REPAIR.md#merging', result.stderr)
+
+    def test_no_ci_workflow_refuses_pending_status_context(self):
+        result, merged, _ = self.run_case(statuses=[{'id': 2, 'context': 'review', 'state': 'pending'}])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(merged)
+
+    def test_workflow_probe_failure_is_not_absence(self):
+        for code in (403, 500):
+            result, merged, _ = self.run_case(probe_status=code)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse(merged)
+
+    def test_present_ci_workflow_still_requires_ci_status(self):
+        result, merged, _ = self.run_case(workflow=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(merged)
+        self.assertIn('ci-status', result.stderr)
+
+    def test_absent_app_workflow_does_not_require_compile(self):
+        result, merged, _ = self.run_case(workflow=True, files=['Sources/App.swift'], checks=[{'id': 1, 'name': 'ci-status', 'status': 'completed', 'conclusion': 'success'}])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(merged)
 
 
 if __name__ == "__main__":

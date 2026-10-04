@@ -177,4 +177,5 @@ keep-deleted: .github/workflows/backend-migrations.yml
 keep-deleted: .github/workflows/cmux-next-frame-pacing.yml
 keep-deleted: .github/workflows/fleet-artifact-cdn.yml
 keep-deleted: .github/workflows/dogfood-artifact-publish.yml
+keep-deleted: .github/workflows/merge-gate.yml
 

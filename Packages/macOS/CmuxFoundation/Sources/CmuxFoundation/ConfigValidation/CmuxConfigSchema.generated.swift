@@ -526,6 +526,29 @@ enum CmuxEmbeddedConfigSchema {
       "type": "string",
       "description": "Legacy name of a workspace command to run when creating a new workspace. Prefer ui.newWorkspace.action for new configs."
     },
+    "sleepyMode": {
+      "type": "object",
+      "title": "sleepyMode",
+      "description": "Sleepy Mode appearance and scene preferences.",
+      "additionalProperties": false,
+      "properties": {
+        "theme": { "type": "string", "enum": ["cmux", "blossom", "mint", "mono", "custom"], "default": "cmux" },
+        "mascot": { "type": "string", "enum": ["cmux", "cat", "ghost", "logoFace"], "default": "cmux" },
+        "glow": { "type": "string", "enum": ["black", "midnight", "cmux", "aurora", "sunset", "ocean", "custom"], "default": "black" },
+        "showMoon": { "type": "boolean", "default": true },
+        "showStars": { "type": "boolean", "default": true },
+        "showZs": { "type": "boolean", "default": true },
+        "showClock": { "type": "boolean", "default": true },
+        "showStatus": { "type": "boolean", "default": true },
+        "showPets": { "type": "boolean", "default": true },
+        "customFace": { "type": "string", "pattern": "^[0-9A-Fa-f]{6}$", "default": "E0EDFF" },
+        "customCap": { "type": "string", "pattern": "^[0-9A-Fa-f]{6}$", "default": "5CD6FF" },
+        "customBlush": { "type": "string", "pattern": "^[0-9A-Fa-f]{6}$", "default": "FF99B5" },
+        "customInk": { "type": "string", "pattern": "^[0-9A-Fa-f]{6}$", "default": "333D6B" },
+        "customLogo": { "type": "string", "pattern": "^[0-9A-Fa-f]{6}$", "default": "6BDEFF" },
+        "customBackground": { "type": "string", "pattern": "^[0-9A-Fa-f]{6}$", "default": "060812" }
+      }
+    },
     "workspaceGroups": {
       "type": "object",
       "title": "workspaceGroups",
@@ -786,6 +809,11 @@ enum CmuxEmbeddedConfigSchema {
           "default": true,
           "description": "Show a confirmation before closing a tab."
         },
+        "warnBeforeClosingAgentSession": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a confirmation before closing an agent session while it is mid-turn."
+        },
         "warnBeforeClosingTabXButton": {
           "type": "boolean",
           "default": false,
@@ -824,6 +852,22 @@ enum CmuxEmbeddedConfigSchema {
           "type": "boolean",
           "default": false,
           "description": "Search every surface in the command palette switcher instead of only the active workspace."
+        }
+      }
+    },
+    "surfaceTabBar": {
+      "x-cmux-scopes": ["global"],
+      "title": "surfaceTabBar",
+      "description": "Surface tab bar typography settings from Settings > Terminal.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fontSize": {
+          "type": "number",
+          "minimum": 8.0,
+          "maximum": 14.0,
+          "default": 11.0,
+          "description": "Default surface tab bar font size in points. The legacy Ghostty key surface-tab-bar-font-size remains a fallback alias."
         }
       }
     },
@@ -1465,6 +1509,13 @@ enum CmuxEmbeddedConfigSchema {
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "fontSize": {
+          "type": "number",
+          "minimum": 10.0,
+          "maximum": 20.0,
+          "default": 12.5,
+          "description": "Sidebar font size in points. The legacy Ghostty key sidebar-font-size remains a fallback alias."
+        },
         "hideAllDetails": {
           "type": "boolean",
           "default": false,
@@ -1725,6 +1776,11 @@ enum CmuxEmbeddedConfigSchema {
           "type": "boolean",
           "default": false,
           "description": "Show the selected workspace as a faint accent tint with a thin edge instead of a solid fill. A custom selectionColor still uses a solid fill."
+        },
+        "brightenInDarkMode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Lighten workspace colors in dark mode so they stay readable on a dark sidebar. false shows colors exactly as chosen. Applies to the solidFill indicator; leftRail always lightens its rail."
         },
         "notificationBadgeColor": {
           "$ref": "#/$defs/colorHexOrNull",

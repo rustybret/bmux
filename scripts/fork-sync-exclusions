@@ -175,6 +175,8 @@ keep-deleted: .github/workflows/test-feed-reply-providers.yml
 keep-deleted: .github/workflows/main-submodule-pin-watch.yml
 keep-deleted: .github/workflows/backend-migrations.yml
 keep-deleted: .github/workflows/cmux-next-frame-pacing.yml
+keep-deleted: .github/workflows/cmux-next.yml
+keep-deleted: .github/workflows/cmux-next-regenerate-bundles.yml
 keep-deleted: .github/workflows/fleet-artifact-cdn.yml
 keep-deleted: .github/workflows/dogfood-artifact-publish.yml
 keep-deleted: .github/workflows/merge-gate.yml

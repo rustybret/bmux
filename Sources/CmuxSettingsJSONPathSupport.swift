@@ -27,6 +27,13 @@ private enum SettingsJSONPathFallbackCatalog {
 
 typealias RightSidebarWidthSettings = CmuxSettings.RightSidebarWidthSettings
 
+enum CmuxJSONFontSettings {
+    static let sidebarPath = "sidebar.fontSize"
+    static let surfaceTabBarPath = "surfaceTabBar.fontSize"
+    static let sidebarUserDefaultsKey = "cmux.settings.sidebarFontSize"
+    static let surfaceTabBarUserDefaultsKey = "cmux.settings.surfaceTabBarFontSize"
+}
+
 enum SidebarWorkspaceDetailDefaults {
     private static let sidebar = SidebarCatalogSection()
 
@@ -200,6 +207,10 @@ enum AppSettingsFileMapping {
         .init(
             jsonKey: "warnBeforeClosingTab",
             defaultsKey: app.warnBeforeClosingTab.userDefaultsKey
+        ),
+        .init(
+            jsonKey: "warnBeforeClosingAgentSession",
+            defaultsKey: app.warnBeforeClosingAgentSession.userDefaultsKey
         ),
         .init(
             jsonKey: "warnBeforeClosingTabXButton",
